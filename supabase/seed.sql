@@ -1,0 +1,7 @@
+-- Seed de exemplo — rode após criar usuários via Supabase Auth
+-- (o trigger on_auth_user_created já cria a linha em profiles).
+--
+-- Para promover um usuário existente a admin ou courier:
+-- update public.profiles set role = 'admin' where id = '<uuid-do-usuario>';
+-- update public.profiles set role = 'courier' where id = '<uuid-do-usuario>';
+-- insert into public.couriers (id, approved, status) values ('<uuid-do-usuario>', true, 'offline');
