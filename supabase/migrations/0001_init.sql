@@ -2,8 +2,6 @@
 -- Marketplace com Entregadores — schema inicial
 -- ============================================================
 
-create extension if not exists "uuid-ossp";
-
 -- ---------------------------------------------------------------
 -- ENUMS
 -- ---------------------------------------------------------------
@@ -59,7 +57,7 @@ create table public.couriers (
 -- PRODUCTS
 -- ---------------------------------------------------------------
 create table public.products (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   seller_id uuid not null references public.profiles (id) on delete cascade,
   title text not null,
   description text,
@@ -78,7 +76,7 @@ create index products_status_idx on public.products (status);
 -- ORDERS
 -- ---------------------------------------------------------------
 create table public.orders (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   buyer_id uuid not null references public.profiles (id) on delete restrict,
   seller_id uuid not null references public.profiles (id) on delete restrict,
   courier_id uuid references public.profiles (id) on delete set null,
@@ -97,7 +95,7 @@ create index orders_courier_id_idx on public.orders (courier_id);
 create index orders_status_idx on public.orders (status);
 
 create table public.order_items (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.orders (id) on delete cascade,
   product_id uuid not null references public.products (id) on delete restrict,
   quantity integer not null check (quantity > 0),
