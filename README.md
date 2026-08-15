@@ -1,12 +1,16 @@
 # Marketplace com Entregadores
 
-Monorepo com 3 aplicativos compartilhando o mesmo backend Supabase:
+Monorepo com 2 aplicativos compartilhando o mesmo backend Supabase:
 
 | App | Pasta | Stack | Para quem |
 |---|---|---|---|
-| Web | `apps/web` | Next.js 14 | Comprador/vendedor |
-| Admin | `apps/admin` | Next.js 14 | Administrador |
+| Web | `apps/web` | Next.js 14 | Comprador/vendedor + painel admin (em `/admin`) |
 | Mobile Entregador | `apps/mobile-entregador` | React Native CLI (bare) | Entregador |
+
+O painel administrativo não é um app separado — vive dentro do `apps/web`, nas rotas `/admin/*`.
+O middleware (`apps/web/src/middleware.ts`) exige sessão autenticada **e** `role = 'admin'` no
+perfil pra liberar essas rotas; qualquer outro usuário que tentar acessar é redirecionado para
+`/produtos`. O link "Admin" no menu só aparece pra quem tem esse papel.
 
 O app do entregador é nativo (não web) porque precisa de GPS em background e, futuramente,
 overlay sobre outros apps — recursos que não existem em navegador. Veja
@@ -16,12 +20,11 @@ overlay sobre outros apps — recursos que não existem em navegador. Veja
 
 ```
 apps/
-  web/                 Next.js — marketplace (comprador/vendedor)
-  admin/                Next.js — painel administrativo
+  web/                 Next.js — marketplace (comprador/vendedor) + /admin/* (painel admin)
   mobile-entregador/    React Native — app do entregador
 packages/
   supabase/             Cliente Supabase + tipos + queries compartilhadas
-  ui/                     Componentes React compartilhados (web + admin)
+  ui/                     Componentes React compartilhados
   config/                  tsconfig base compartilhado
 supabase/
   migrations/            SQL do schema + RLS
@@ -32,13 +35,13 @@ supabase/
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (ou rode local com `supabase start`,
    requer a [CLI do Supabase](https://supabase.com/docs/guides/cli)).
-2. Aplique o schema:
+2. Aplique as migrations:
    ```bash
    supabase link --project-ref <seu-project-ref>
    supabase db push
    ```
-   Isso roda `supabase/migrations/0001_init.sql`, que cria as tabelas, triggers e políticas RLS.
-3. Copie a **Project URL** e a **anon key** em Project Settings → API.
+   Isso roda `supabase/migrations/`, que cria as tabelas, triggers e políticas RLS.
+3. Copie a **Project URL** e a **anon/publishable key** em Project Settings → API Keys.
 
 ## 2. Instalar dependências
 
@@ -50,7 +53,6 @@ pnpm install
 
 ```bash
 cp apps/web/.env.example apps/web/.env.local
-cp apps/admin/.env.example apps/admin/.env.local
 cp apps/mobile-entregador/.env.example apps/mobile-entregador/.env
 ```
 
@@ -62,9 +64,8 @@ Preencha `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` (e `SUPABA
 ## 4. Rodar em desenvolvimento
 
 ```bash
-pnpm dev            # sobe web (porta 3000) e admin (porta 3001) juntos via Turborepo
-pnpm dev:web         # só o marketplace
-pnpm dev:admin       # só o painel admin
+pnpm dev       # sobe o web (porta 3000) via Turborepo
+pnpm dev:web    # equivalente, explícito
 ```
 
 Para o app do entregador, siga o setup nativo em
@@ -78,12 +79,13 @@ pastas `android/`/`ios/` uma única vez com o CLI oficial do React Native).
    ```sql
    update public.profiles set role = 'admin' where id = '<uuid-do-usuario>';
    ```
+   O link "Admin" aparece no menu e as rotas `/admin/*` ficam liberadas pra essa conta.
 3. Para um entregador, marque `role = 'courier'` e crie a linha correspondente em `couriers`:
    ```sql
    update public.profiles set role = 'courier' where id = '<uuid-do-usuario>';
    insert into public.couriers (id, approved, status) values ('<uuid-do-usuario>', true, 'offline');
    ```
-   (o painel admin em `/entregadores` também aprova cadastros de entregador manualmente).
+   (o painel admin em `/admin/entregadores` também aprova cadastros de entregador manualmente).
 
 ## Fluxo ponta a ponta para testar
 
@@ -94,8 +96,8 @@ pastas `android/`/`ios/` uma única vez com o CLI oficial do React Native).
    automaticamente via GPS para `courier_locations`.
 5. Comprador → `/pedidos/[id]/rastrear` no `apps/web` → vê o pino do entregador se mover no
    mapa em tempo real (Supabase Realtime).
-6. Admin → `apps/admin` → acompanha tudo em `/pedidos`, `/produtos`, `/usuarios`,
-   `/entregadores`.
+6. Admin → `/admin` no mesmo `apps/web` → acompanha tudo em `/admin/pedidos`,
+   `/admin/produtos`, `/admin/usuarios`, `/admin/entregadores`.
 
 ## Escopo fora da v1
 

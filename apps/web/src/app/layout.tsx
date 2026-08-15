@@ -1,31 +1,52 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Marketplace",
   description: "Compre e venda com entrega rastreada",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isAdmin = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    isAdmin = profile?.role === "admin";
+  }
+
   return (
     <html lang="pt-BR">
       <body>
-        <header className="border-b border-slate-200 bg-white">
+        <header className="border-b border-border bg-card">
           <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-            <Link href="/produtos" className="text-lg font-semibold text-brand-700">
+            <Link href="/produtos" className="text-lg font-semibold text-gradient-brand font-display">
               Marketplace
             </Link>
-            <div className="flex gap-4 text-sm">
-              <Link href="/produtos">Produtos</Link>
-              <Link href="/vender">Vender</Link>
-              <Link href="/pedidos">Meus pedidos</Link>
-              <Link href="/vendas">Minhas vendas</Link>
-              <Link href="/login">Entrar</Link>
+            <div className="flex gap-4 text-sm text-muted-foreground">
+              <Link href="/produtos" className="hover:text-foreground">Produtos</Link>
+              <Link href="/vender" className="hover:text-foreground">Vender</Link>
+              <Link href="/pedidos" className="hover:text-foreground">Meus pedidos</Link>
+              <Link href="/vendas" className="hover:text-foreground">Minhas vendas</Link>
+              {isAdmin && (
+                <Link href="/admin" className="text-brand hover:text-foreground">
+                  Admin
+                </Link>
+              )}
+              <Link href="/login" className="hover:text-foreground">Entrar</Link>
             </div>
           </nav>
         </header>
-        <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+        {children}
       </body>
     </html>
   );
