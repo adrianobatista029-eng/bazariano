@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import MapboxGL from "@rnmapbox/maps";
 import { MAPBOX_ACCESS_TOKEN } from "@env";
 import { getOrderById, updateOrderStatus, type Database } from "@marketplace/supabase";
 import { supabase } from "@/lib/supabase";
-import { requestLocationPermission, startLocationTracking, stopLocationTracking } from "@/lib/location";
+import { requestLocationPermission, startLocationTracking } from "@/lib/location";
+import { COLORS, MAPBOX_STYLE_URL } from "@/theme";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "@/navigation/types";
 
@@ -40,8 +41,9 @@ export function ActiveDeliveryScreen({ route, navigation }: Props) {
   }, [orderId]);
 
   useEffect(() => {
-    let courierId: string | null = null;
-
+    // O rastreamento contínuo já roda desde que o entregador ficou "online"
+    // na Home. Isso aqui é só uma rede de segurança (idempotente) caso o
+    // app tenha reiniciado com uma entrega já em andamento.
     (async () => {
       const granted = await requestLocationPermission();
       if (!granted) return;
@@ -49,11 +51,8 @@ export function ActiveDeliveryScreen({ route, navigation }: Props) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      courierId = user.id;
-      startLocationTracking(courierId);
+      startLocationTracking(user.id);
     })();
-
-    return () => stopLocationTracking();
   }, []);
 
   async function handleAdvanceStatus() {
@@ -67,21 +66,22 @@ export function ActiveDeliveryScreen({ route, navigation }: Props) {
     setStatus(data.status);
 
     if (data.status === "delivered") {
-      stopLocationTracking();
-      navigation.navigate("AvailableOrders");
+      navigation.navigate("Main", { screen: "Pedidos" });
     }
   }
 
   return (
     <View style={styles.container}>
-      <MapboxGL.MapView style={styles.map}>
+      <MapboxGL.MapView style={styles.map} styleURL={MAPBOX_STYLE_URL}>
         <MapboxGL.Camera followUserLocation followZoomLevel={14} />
         <MapboxGL.UserLocation visible />
       </MapboxGL.MapView>
       <View style={styles.footer}>
         <Text style={styles.address}>{address}</Text>
         {status && NEXT_STATUS[status] && (
-          <Button title={NEXT_STATUS_LABEL[status]!} onPress={handleAdvanceStatus} />
+          <TouchableOpacity style={styles.button} onPress={handleAdvanceStatus}>
+            <Text style={styles.buttonText}>{NEXT_STATUS_LABEL[status]!}</Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -89,8 +89,20 @@ export function ActiveDeliveryScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: COLORS.background },
   map: { flex: 1 },
-  footer: { padding: 16, borderTopWidth: 1, borderColor: "#e2e8f0" },
-  address: { marginBottom: 12 },
+  footer: {
+    padding: 20,
+    backgroundColor: COLORS.card,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
+  },
+  address: { marginBottom: 14, color: COLORS.text },
+  button: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: "center",
+  },
+  buttonText: { color: "white", fontWeight: "700", fontSize: 15 },
 });

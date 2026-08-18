@@ -1,16 +1,30 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, FlatList, RefreshControl, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+} from "react-native";
+import type { CompositeScreenProps } from "@react-navigation/native";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   listAvailableOrdersForCourier,
   acceptOrderAsCourier,
   type Database,
 } from "@marketplace/supabase";
 import { supabase } from "@/lib/supabase";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { RootStackParamList } from "@/navigation/types";
+import { COLORS } from "@/theme";
+import type { HomeTabParamList, RootStackParamList } from "@/navigation/types";
 
 type Order = Database["public"]["Tables"]["orders"]["Row"];
-type Props = NativeStackScreenProps<RootStackParamList, "AvailableOrders">;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<HomeTabParamList, "Pedidos">,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 export function AvailableOrdersScreen({ navigation }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -40,35 +54,55 @@ export function AvailableOrdersScreen({ navigation }: Props) {
   }
 
   return (
-    <FlatList
-      data={orders}
-      keyExtractor={(item) => item.id}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadOrders} />}
-      contentContainerStyle={styles.list}
-      ListEmptyComponent={<Text style={styles.empty}>Nenhum pedido disponível no momento.</Text>}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.address}>{item.delivery_address}</Text>
-          <TouchableOpacity style={styles.button} onPress={() => handleAccept(item)}>
-            <Text style={styles.buttonText}>Aceitar entrega</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    />
+    <SafeAreaView style={styles.safeArea}>
+      <Text style={styles.header}>Pedidos disponíveis</Text>
+      <FlatList
+        data={orders}
+        keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadOrders} />}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          <Text style={styles.empty}>Nenhum pedido disponível no momento.</Text>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.address}>{item.delivery_address}</Text>
+            <TouchableOpacity style={styles.button} onPress={() => handleAccept(item)}>
+              <Text style={styles.buttonText}>Aceitar entrega</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { padding: 16, gap: 12 },
-  empty: { textAlign: "center", color: "#64748b", marginTop: 40 },
+  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.text,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  list: { padding: 20, gap: 12 },
+  empty: { textAlign: "center", color: COLORS.muted, marginTop: 40 },
   card: {
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 8,
-    padding: 12,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 12,
   },
-  address: { marginBottom: 8 },
-  button: { backgroundColor: "#0b63c9", borderRadius: 6, padding: 10, alignItems: "center" },
+  address: { marginBottom: 10, color: COLORS.text },
+  button: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: "center",
+  },
   buttonText: { color: "white", fontWeight: "600" },
 });

@@ -22,18 +22,25 @@ export function listOrdersAsSeller(client: Client, sellerId: string) {
 export function listAvailableOrdersForCourier(client: Client) {
   return client
     .from("orders")
-    .select("*")
+    .select("*, seller:profiles!orders_seller_id_fkey(full_name)")
     .eq("status", "pending")
     .order("created_at", { ascending: true });
 }
 
-export function listOrdersAssignedToCourier(client: Client, courierId: string) {
+export function getCourierEarningsToday(client: Client, courierId: string) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
   return client
     .from("orders")
-    .select("*")
+    .select("total_cents")
     .eq("courier_id", courierId)
-    .in("status", ["accepted", "picked_up", "delivering"])
-    .order("created_at", { ascending: false });
+    .eq("status", "delivered")
+    .gte("updated_at", startOfDay.toISOString())
+    .then(({ data, error }) => ({
+      total_cents: (data ?? []).reduce((sum, row) => sum + row.total_cents, 0),
+      error,
+    }));
 }
 
 export function getOrderById(client: Client, orderId: string) {

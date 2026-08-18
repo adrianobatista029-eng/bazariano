@@ -1,5 +1,16 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
+export type HomeTabParamList = {
+  Home: undefined;
+  Buscas: undefined;
+  Pedidos: undefined;
+  Mensagens: undefined;
+  Perfil: undefined;
+};
+
 export type RootStackParamList = {
   Login: undefined;
-  AvailableOrders: undefined;
+  Signup: undefined;
+  Main: NavigatorScreenParams<HomeTabParamList>;
   ActiveDelivery: { orderId: string };
 };

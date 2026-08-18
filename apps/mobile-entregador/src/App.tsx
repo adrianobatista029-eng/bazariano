@@ -4,7 +4,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { LoginScreen } from "@/screens/LoginScreen";
-import { AvailableOrdersScreen } from "@/screens/AvailableOrdersScreen";
+import { SignupScreen } from "@/screens/SignupScreen";
+import { HomeTabs } from "@/navigation/HomeTabs";
 import { ActiveDeliveryScreen } from "@/screens/ActiveDeliveryScreen";
 import type { RootStackParamList } from "@/navigation/types";
 
@@ -34,11 +35,7 @@ export default function App() {
       <Stack.Navigator>
         {session ? (
           <>
-            <Stack.Screen
-              name="AvailableOrders"
-              component={AvailableOrdersScreen}
-              options={{ title: "Pedidos disponíveis" }}
-            />
+            <Stack.Screen name="Main" component={HomeTabs} options={{ headerShown: false }} />
             <Stack.Screen
               name="ActiveDelivery"
               component={ActiveDeliveryScreen}
@@ -46,7 +43,14 @@ export default function App() {
             />
           </>
         ) : (
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="Signup"
+              component={SignupScreen}
+              options={{ headerShown: false }}
+            />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

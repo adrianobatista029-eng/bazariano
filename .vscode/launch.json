@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Entregador: Debug Android",
+      "cwd": "${workspaceFolder}/apps/mobile-entregador",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "android"
+    },
+    {
+      "name": "Entregador: Attach ao app já rodando",
+      "cwd": "${workspaceFolder}/apps/mobile-entregador",
+      "type": "reactnative",
+      "request": "attach"
+    }
+  ]
+}

@@ -52,10 +52,15 @@ export function setCourierStatus(
   return client.from("couriers").update({ status }).eq("id", courierId).select().single();
 }
 
-export function listPendingCourierApprovals(client: Client) {
+export function createCourierProfile(
+  client: Client,
+  courierId: string,
+  vehicleType: string,
+  vehiclePlate: string
+) {
   return client
     .from("couriers")
-    .select("*, profiles(*)")
-    .eq("approved", false)
-    .order("created_at", { ascending: true });
+    .insert({ id: courierId, vehicle_type: vehicleType, vehicle_plate: vehiclePlate })
+    .select()
+    .single();
 }
