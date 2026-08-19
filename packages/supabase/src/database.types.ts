@@ -184,12 +184,46 @@ export type Database = {
           },
         ]
       }
+      product_media: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          product_id: string
+          type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position?: number
+          product_id: string
+          type: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          product_id?: string
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_media_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           created_at: string
           description: string | null
           id: string
-          photos: string[]
           price_cents: number
           seller_id: string
           status: string
@@ -201,7 +235,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          photos?: string[]
           price_cents: number
           seller_id: string
           status?: string
@@ -213,7 +246,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          photos?: string[]
           price_cents?: number
           seller_id?: string
           status?: string
@@ -269,6 +301,24 @@ export type Database = {
       current_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      register_as_courier: {
+        Args: { p_vehicle_plate: string; p_vehicle_type: string }
+        Returns: {
+          approved: boolean
+          created_at: string
+          document_url: string | null
+          id: string
+          status: Database["public"]["Enums"]["courier_status"]
+          vehicle_plate: string | null
+          vehicle_type: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "couriers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

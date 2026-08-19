@@ -56,6 +56,46 @@
 
 :root {
   --radius: 0.625rem;
+  /* Tema claro — paleta "aventura" (azul/laranja sobre fundo claro) */
+  --background: #f4f7f6;
+  --foreground: #2c3e50;
+  --card: #ffffff;
+  --card-foreground: #2c3e50;
+  --popover: #ffffff;
+  --popover-foreground: #2c3e50;
+  --primary: #1b75bc;
+  --primary-foreground: #ffffff;
+  --secondary: #e9eef1;
+  --secondary-foreground: #2c3e50;
+  --muted: #e9eef1;
+  --muted-foreground: #64748b;
+  --accent: #f37021;
+  --accent-foreground: #ffffff;
+  --brand: #f37021;
+  --brand-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #1b75bc;
+  --chart-1: #1b75bc;
+  --chart-2: #f37021;
+  --chart-3: #0b3b60;
+  --chart-4: #64748b;
+  --chart-5: #2c3e50;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2c3e50;
+  --sidebar-primary: #1b75bc;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f7f6;
+  --sidebar-accent-foreground: #2c3e50;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #1b75bc;
+  --shadow-elevated-value: 0 20px 45px -20px rgb(15 23 42 / 0.18);
+  --shadow-glow-value: 0 0 0 1px rgb(27 117 188 / 0.25), 0 12px 30px -12px rgb(27 117 188 / 0.3);
+}
+
+.dark {
   --background: oklch(0.16 0.028 264);
   --foreground: oklch(0.97 0.005 250);
   --card: oklch(0.21 0.032 264);
@@ -90,10 +130,13 @@
   --sidebar-accent-foreground: oklch(0.97 0.005 250);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.55 0.18 255);
+  --shadow-elevated-value: 0 24px 60px -24px oklch(0 0 0 / 0.7);
+  --shadow-glow-value: 0 0 0 1px oklch(0.55 0.18 255 / 0.4), 0 20px 60px -20px oklch(0.55 0.18 255 / 0.45);
 }
+
 @theme inline {
-  --shadow-elevated: 0 24px 60px -24px oklch(0 0 0 / 0.7);
-  --shadow-glow: 0 0 0 1px oklch(0.55 0.18 255 / 0.4), 0 20px 60px -20px oklch(0.55 0.18 255 / 0.45);
+  --shadow-elevated: var(--shadow-elevated-value);
+  --shadow-glow: var(--shadow-glow-value);
 }
 
 @utility grid-compass {

@@ -52,7 +52,7 @@ export function SignupScreen({ navigation }: Props) {
       email: email.trim(),
       password,
       options: {
-        data: { full_name: fullName.trim(), role: "courier", phone: phone.trim() || null },
+        data: { full_name: fullName.trim(), phone: phone.trim() || null },
       },
     });
 
@@ -62,9 +62,10 @@ export function SignupScreen({ navigation }: Props) {
       return;
     }
 
+    // O role vira 'courier' só aqui, dentro do banco (register_as_courier) —
+    // nunca é algo que o app manda diretamente no cadastro.
     const { error: courierError } = await createCourierProfile(
       supabase,
-      data.user.id,
       vehicleType,
       vehiclePlate.trim()
     );

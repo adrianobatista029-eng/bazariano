@@ -3,7 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Database } from "@marketplace/supabase";
 
-type Product = Database["public"]["Tables"]["products"]["Row"];
+type Product = Database["public"]["Tables"]["products"]["Row"] & {
+  product_media: Database["public"]["Tables"]["product_media"]["Row"][];
+};
 
 export type CartItem = {
   product: Product;

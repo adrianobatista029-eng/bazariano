@@ -6,21 +6,28 @@ type Client = SupabaseClient<Database>;
 export function listActiveProducts(client: Client) {
   return client
     .from("products")
-    .select("*")
+    .select("*, product_media(*)")
     .eq("status", "active")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("position", { foreignTable: "product_media", ascending: true });
 }
 
 export function getProductById(client: Client, productId: string) {
-  return client.from("products").select("*").eq("id", productId).single();
+  return client
+    .from("products")
+    .select("*, product_media(*)")
+    .eq("id", productId)
+    .order("position", { foreignTable: "product_media", ascending: true })
+    .single();
 }
 
 export function listProductsBySeller(client: Client, sellerId: string) {
   return client
     .from("products")
-    .select("*")
+    .select("*, product_media(*)")
     .eq("seller_id", sellerId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("position", { foreignTable: "product_media", ascending: true });
 }
 
 export function createProduct(

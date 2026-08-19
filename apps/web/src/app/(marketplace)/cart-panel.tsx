@@ -1,13 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createOrder } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/lib/cart-context";
 import { formatPriceCents } from "@/lib/format";
 
-export function CartPanel({ isLoggedIn }: { isLoggedIn: boolean }) {
+export function CartPanel({
+  isLoggedIn,
+  open,
+  onClose,
+}: {
+  isLoggedIn: boolean;
+  open: boolean;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const { items, incrementQuantity, decrementQuantity, removeItem, clear, totalCents } = useCart();
   const [address, setAddress] = useState("");
@@ -54,6 +63,14 @@ export function CartPanel({ isLoggedIn }: { isLoggedIn: boolean }) {
       return;
     }
 
+    if (sellerGroups.has(user.id)) {
+      setError(
+        "Seu carrinho tem um produto seu. Remova-o (você não pode comprar do seu próprio anúncio) para finalizar a compra."
+      );
+      setLoading(false);
+      return;
+    }
+
     const createdOrderIds: string[] = [];
 
     for (const [sellerId, groupItems] of sellerGroups) {
@@ -96,16 +113,54 @@ export function CartPanel({ isLoggedIn }: { isLoggedIn: boolean }) {
     } else {
       router.push("/pedidos");
     }
+    onClose();
   }
 
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
   return (
-    <aside className="flex w-96 shrink-0 flex-col gap-6 border-l border-border bg-card/40 p-8 shadow-2xl backdrop-blur-xl">
-      <div className="flex items-center justify-between border-b border-border pb-4">
-        <h2 className="text-2xl font-bold">Meu Carrinho</h2>
-        <span className="rounded-full bg-brand px-2 py-1 text-xs font-bold text-brand-foreground">
-          {items.length} {items.length === 1 ? "item" : "itens"}
-        </span>
-      </div>
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/50" onClick={onClose}>
+      <aside
+        className="flex h-full w-full max-w-96 flex-col gap-6 border-l border-border bg-card p-8 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <h2 className="text-2xl font-bold">Meu Carrinho</h2>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-brand px-2 py-1 text-xs font-bold text-brand-foreground">
+              {items.length} {items.length === 1 ? "item" : "itens"}
+            </span>
+            <button
+              onClick={onClose}
+              aria-label="Fechar carrinho"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {items.length > 0 && (
+          <button
+            onClick={() => {
+              clear();
+              setShowAddressField(false);
+              setError(null);
+            }}
+            className="self-start text-sm text-muted-foreground underline hover:text-destructive"
+          >
+            Esvaziar carrinho
+          </button>
+        )}
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
         {items.length === 0 && (
@@ -116,13 +171,13 @@ export function CartPanel({ isLoggedIn }: { isLoggedIn: boolean }) {
             key={item.product.id}
             className="flex items-center gap-4 rounded-2xl border border-border bg-secondary/40 p-4"
           >
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-muted">
-              {item.product.photos[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.product.photos[0]}
+            <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-muted">
+              {item.product.product_media[0]?.type === "photo" ? (
+                <Image
+                  src={item.product.product_media[0].url}
                   alt={item.product.title}
-                  className="h-full w-full rounded-xl object-cover"
+                  fill
+                  className="object-cover"
                 />
               ) : (
                 <span className="text-xl">📦</span>
@@ -191,6 +246,7 @@ export function CartPanel({ isLoggedIn }: { isLoggedIn: boolean }) {
           </button>
         </div>
       )}
-    </aside>
+      </aside>
+    </div>
   );
 }

@@ -4,9 +4,17 @@ import { useState } from "react";
 import type { Database } from "@marketplace/supabase";
 import { useCart } from "@/lib/cart-context";
 
-type Product = Database["public"]["Tables"]["products"]["Row"];
+type Product = Database["public"]["Tables"]["products"]["Row"] & {
+  product_media: Database["public"]["Tables"]["product_media"]["Row"][];
+};
 
-export function AddToCartButton({ product }: { product: Product }) {
+export function AddToCartButton({
+  product,
+  isOwnProduct,
+}: {
+  product: Product;
+  isOwnProduct: boolean;
+}) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
 
@@ -14,6 +22,14 @@ export function AddToCartButton({ product }: { product: Product }) {
     addItem(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
+  }
+
+  if (isOwnProduct) {
+    return (
+      <p className="mt-6 rounded-xl border border-border bg-secondary/40 px-6 py-3 text-sm text-muted-foreground">
+        Este é o seu produto — você não pode comprá-lo.
+      </p>
+    );
   }
 
   return (

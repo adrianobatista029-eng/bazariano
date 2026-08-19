@@ -52,15 +52,12 @@ export function setCourierStatus(
   return client.from("couriers").update({ status }).eq("id", courierId).select().single();
 }
 
-export function createCourierProfile(
-  client: Client,
-  courierId: string,
-  vehicleType: string,
-  vehiclePlate: string
-) {
-  return client
-    .from("couriers")
-    .insert({ id: courierId, vehicle_type: vehicleType, vehicle_plate: vehiclePlate })
-    .select()
-    .single();
+// Promove a conta recém-criada (sempre nascida 'buyer_seller') a 'courier' e
+// cria a linha em couriers, tudo dentro de uma função do banco
+// (register_as_courier) — o cliente nunca escolhe o próprio role diretamente.
+export function createCourierProfile(client: Client, vehicleType: string, vehiclePlate: string) {
+  return client.rpc("register_as_courier", {
+    p_vehicle_type: vehicleType,
+    p_vehicle_plate: vehiclePlate,
+  });
 }

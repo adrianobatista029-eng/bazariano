@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard } from "./product-card";
+import { StoriesTray } from "./stories-tray";
 
 export default async function ProdutosPage({
   searchParams,
@@ -7,11 +8,16 @@ export default async function ProdutosPage({
   searchParams: { q?: string };
 }) {
   const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   let query = supabase
     .from("products")
-    .select("*")
+    .select("*, product_media(*)")
     .eq("status", "active")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("position", { foreignTable: "product_media", ascending: true });
 
   if (searchParams.q) {
     query = query.ilike("title", `%${searchParams.q}%`);
@@ -40,6 +46,8 @@ export default async function ProdutosPage({
         <div className="absolute right-0 top-0 h-full w-64 rounded-full bg-brand/10 blur-3xl" />
       </section>
 
+      {!searchParams.q && products && <StoriesTray products={products} />}
+
       <section>
         <div className="mb-6 flex items-end justify-between">
           <h3 className="text-2xl font-bold">
@@ -52,7 +60,7 @@ export default async function ProdutosPage({
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} currentUserId={user?.id} />
             ))}
           </div>
         )}

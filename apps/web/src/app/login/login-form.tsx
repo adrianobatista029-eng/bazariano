@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { ThemeToggle } from "@/lib/theme-toggle";
 
 export function LoginForm() {
   const router = useRouter();
@@ -37,7 +38,8 @@ export function LoginForm() {
   }
 
   return (
-    <div className="grid-compass flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="grid-compass relative flex min-h-screen items-center justify-center bg-background px-4">
+      <ThemeToggle className="absolute right-4 top-4" />
       <div className="w-full max-w-sm">
         <Link href="/produtos" className="mb-8 flex items-center justify-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand font-bold text-brand-foreground shadow-glow">

@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/lib/theme-toggle";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-[calc(100vh-57px)]">
       <aside className="w-56 border-r border-sidebar-border bg-sidebar p-4">
-        <p className="mb-6 text-lg font-semibold text-gradient-brand font-display">Admin</p>
+        <div className="mb-6 flex items-center justify-between">
+          <p className="text-lg font-semibold text-gradient-brand font-display">Admin</p>
+          <ThemeToggle />
+        </div>
         <nav className="flex flex-col gap-2 text-sm text-sidebar-foreground/70">
           <Link href="/admin" className="hover:text-sidebar-foreground">
             Visão geral
