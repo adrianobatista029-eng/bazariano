@@ -604,11 +604,20 @@ export function PhotoEditorModal({
     setBgError(null);
     setBgProgress("Carregando modelo...");
     try {
-      const { removeBackground } = await import("@imgly/background-removal");
-      const blob = await removeBackground(imageUrl, {
+      // Carregado direto de uma URL (não como pacote npm empacotado pelo
+      // Next.js): a lib só suporta oficialmente Next 15+, e empacotar ela
+      // quebra o build de produção do Next 14 (o bundle interno do
+      // onnxruntime-web usa `import.meta` de um jeito que o minificador do
+      // Next não processa). Carregando via URL, o Next nunca chega a
+      // empacotar/minificar esse código — o navegador importa direto.
+      // Especificador numa variável (não string literal) pra evitar que o
+      // Next tente resolver/empacotar esse import em build time.
+      const CDN_URL = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/index.mjs";
+      const { removeBackground } = await import(/* webpackIgnore: true */ CDN_URL);
+      const blob: Blob = await removeBackground(imageUrl, {
         model: "isnet_fp16",
         output: { format: "image/png" },
-        progress: (key, current, total) => {
+        progress: (key: string, current: number, total: number) => {
           setBgProgress(
             key.startsWith("fetch") ? `Baixando modelo (${Math.round((current / total) * 100)}%)` : "Processando..."
           );
