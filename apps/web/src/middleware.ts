@@ -32,22 +32,34 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = pathname.startsWith(ADMIN_PREFIX);
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
+  let profile: { role: string; full_name: string | null } | null = null;
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role, full_name")
+      .eq("id", user.id)
+      .single();
+    profile = data;
+  }
+
+  // Conta "apagada": em vez de uma coluna dedicada, usamos o próprio
+  // full_name como sinal (evita migration) — handleDeleteAccount grava
+  // esse valor exato ao anonimizar o perfil.
+  if (user && pathname !== "/login" && profile?.full_name === "Usuário removido") {
+    await supabase.auth.signOut();
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("accountDeleted", "1");
+    return NextResponse.redirect(loginUrl);
+  }
+
   if ((isProtected || isAdminRoute) && !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
-      return NextResponse.redirect(new URL("/produtos", request.url));
-    }
+  if (isAdminRoute && user && profile?.role !== "admin") {
+    return NextResponse.redirect(new URL("/produtos", request.url));
   }
 
   return response;

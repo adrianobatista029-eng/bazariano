@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { formatCPF } from "@/lib/cpf";
+import { AddressAutocomplete, type StructuredAddress } from "@/lib/address-autocomplete";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
@@ -17,9 +19,18 @@ export function ProfileModal({
   open,
   onClose,
   onLogout,
+  onSaveName,
+  onSaveLocation,
+  onDeleteAccount,
+  onUploadAvatar,
   displayName,
   email,
-  phone,
+  cpf,
+  street,
+  number,
+  neighborhood,
+  city,
+  state,
   avatarUrl,
   role,
   memberSince,
@@ -27,13 +38,37 @@ export function ProfileModal({
   open: boolean;
   onClose: () => void;
   onLogout: () => void;
+  onSaveName: (name: string) => { error: string | null } | undefined | Promise<{ error: string | null } | undefined>;
+  onSaveLocation: (
+    address: StructuredAddress
+  ) => { error: string | null } | undefined | Promise<{ error: string | null } | undefined>;
+  onDeleteAccount: () => void | Promise<void>;
+  onUploadAvatar: (file: File) => void | Promise<void>;
   displayName: string;
   email: string;
-  phone: string | null;
+  cpf: string | null;
+  street: string | null;
+  number: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
   avatarUrl: string | null;
   role: string | null;
   memberSince: string | null;
 }) {
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(displayName);
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -42,6 +77,69 @@ export function ProfileModal({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (open) {
+      setNameInput(displayName);
+      setEditingName(false);
+      setNameError(null);
+      setEditingLocation(false);
+      setLocationError(null);
+      setConfirmingDelete(false);
+    }
+  }, [open, displayName]);
+
+  async function handleSaveName() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setSavingName(true);
+    setNameError(null);
+    const result = await onSaveName(trimmed);
+    setSavingName(false);
+    if (result?.error) {
+      setNameError(result.error);
+      return;
+    }
+    setEditingName(false);
+  }
+
+  async function handleSelectAddress(address: StructuredAddress) {
+    setSavingLocation(true);
+    setLocationError(null);
+    const result = await onSaveLocation(address);
+    setSavingLocation(false);
+    if (result?.error) {
+      setLocationError(result.error);
+      return;
+    }
+    setEditingLocation(false);
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    await onDeleteAccount();
+    setDeletingAccount(false);
+  }
+
+  async function handleAvatarSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Escolha um arquivo de imagem.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("A imagem precisa ter até 5MB.");
+      return;
+    }
+
+    setAvatarError(null);
+    setUploadingAvatar(true);
+    await onUploadAvatar(file);
+    setUploadingAvatar(false);
+  }
 
   if (!open) return null;
 
@@ -66,20 +164,79 @@ export function ProfileModal({
         </div>
 
         <div className="mb-6 flex flex-col items-center gap-3">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              className="h-20 w-20 rounded-full object-cover ring-4 ring-brand/20"
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            aria-label="Escolher foto de perfil"
+            title="Escolher foto de perfil"
+            className="group relative h-20 w-20 shrink-0"
+          >
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="h-20 w-20 rounded-full object-cover ring-4 ring-brand/20"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand text-2xl font-bold text-brand-foreground ring-4 ring-brand/20">
+                {(displayName || email || "?").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-transparent transition-colors group-hover:bg-black/50 group-hover:text-white">
+              {uploadingAvatar ? "..." : "📷"}
+            </span>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarSelected}
+              className="hidden"
             />
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand text-2xl font-bold text-brand-foreground ring-4 ring-brand/20">
-              {(displayName || email || "?").charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div className="text-center">
-            <p className="text-lg font-semibold text-foreground">{displayName || "Usuário"}</p>
+          </button>
+          {avatarError && <p className="text-xs text-destructive">{avatarError}</p>}
+          <div className="w-full text-center">
+            {editingName ? (
+              <div className="flex items-center justify-center gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                  className="w-40 rounded-lg border border-input bg-secondary px-3 py-1.5 text-center text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <button
+                  onClick={handleSaveName}
+                  disabled={savingName}
+                  className="rounded-lg bg-brand px-2 py-1.5 text-xs font-semibold text-brand-foreground disabled:opacity-50"
+                >
+                  {savingName ? "..." : "Salvar"}
+                </button>
+                <button
+                  onClick={() => setEditingName(false)}
+                  className="rounded-lg bg-secondary px-2 py-1.5 text-xs text-foreground"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
+            {editingName && nameError && (
+              <p className="mt-1 text-xs text-destructive">{nameError}</p>
+            )}
+            {!editingName && (
+              <p className="flex items-center justify-center gap-2 text-lg font-semibold text-foreground">
+                {displayName || "Usuário"}
+                <button
+                  onClick={() => setEditingName(true)}
+                  aria-label="Editar nome"
+                  title="Editar nome"
+                  className="text-sm text-muted-foreground hover:text-brand"
+                >
+                  ✏️
+                </button>
+              </p>
+            )}
             {role && (
               <span className="mt-1 inline-block rounded-full bg-secondary px-3 py-0.5 text-xs font-medium text-muted-foreground">
                 {ROLE_LABEL[role] ?? role}
@@ -94,12 +251,49 @@ export function ProfileModal({
             <dd className="truncate text-right font-medium text-foreground">{email || "—"}</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-muted-foreground">Telefone</dt>
-            <dd className="text-right font-medium text-foreground">{phone || "Não informado"}</dd>
+            <dt className="text-muted-foreground">CPF</dt>
+            <dd className="text-right font-medium text-foreground">
+              {cpf ? formatCPF(cpf) : "Não informado"}
+            </dd>
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="text-muted-foreground">Membro desde</dt>
             <dd className="text-right font-medium text-foreground">{formatMemberSince(memberSince)}</dd>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-muted-foreground">Localização</dt>
+              {!editingLocation && (
+                <dd className="flex items-center gap-1.5 text-right font-medium text-foreground">
+                  {street && city && state
+                    ? `${street}${number ? `, ${number}` : ""}${neighborhood ? ` - ${neighborhood}` : ""}, ${city}/${state}`
+                    : "Não informado"}
+                  <button
+                    onClick={() => setEditingLocation(true)}
+                    aria-label="Editar localização"
+                    title="Editar localização"
+                    className="text-sm text-muted-foreground hover:text-brand"
+                  >
+                    ✏️
+                  </button>
+                </dd>
+              )}
+            </div>
+            {editingLocation && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <AddressAutocomplete onSelect={handleSelectAddress} />
+                  <button
+                    onClick={() => setEditingLocation(false)}
+                    className="shrink-0 rounded-lg bg-secondary px-2 py-2 text-xs text-foreground"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {savingLocation && <p className="text-xs text-muted-foreground">Salvando...</p>}
+                {locationError && <p className="text-xs text-destructive">{locationError}</p>}
+              </div>
+            )}
           </div>
         </dl>
 
@@ -109,6 +303,38 @@ export function ProfileModal({
         >
           Sair da conta
         </button>
+
+        {confirmingDelete ? (
+          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-destructive/40 bg-destructive/5 p-3">
+            <p className="text-xs text-destructive">
+              Isso remove seus dados pessoais e seus anúncios ficam removidos. Seus pedidos
+              continuam existindo (histórico de quem comprou/vendeu com você não é apagado).
+              Essa ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+                className="flex-1 rounded-lg bg-destructive py-2 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                {deletingAccount ? "Apagando..." : "Sim, apagar minha conta"}
+              </button>
+              <button
+                onClick={() => setConfirmingDelete(false)}
+                className="rounded-lg bg-secondary px-3 py-2 text-xs text-foreground"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className="mt-3 w-full text-center text-xs text-muted-foreground underline hover:text-destructive"
+          >
+            Apagar minha conta
+          </button>
+        )}
       </div>
     </div>
   );

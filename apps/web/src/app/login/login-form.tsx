@@ -5,26 +5,40 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/lib/theme-toggle";
+import { formatCPF, isValidCPF } from "@/lib/cpf";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [cpf, setCpf] = useState("");
   const [mode, setMode] = useState<"sign_in" | "sign_up">("sign_in");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    if (mode === "sign_up" && !isValidCPF(cpf)) {
+      setError("CPF inválido. Confira os números digitados.");
+      return;
+    }
+
+    setLoading(true);
     const supabase = createClient();
 
     const { error: authError } =
       mode === "sign_in"
         ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+        : await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { full_name: fullName.trim(), cpf: cpf.replace(/\D/g, "") } },
+          });
 
     setLoading(false);
 
@@ -33,7 +47,10 @@ export function LoginForm() {
       return;
     }
 
-    router.push(searchParams.get("redirectTo") ?? "/produtos");
+    const redirectTo = searchParams.get("redirectTo");
+    router.push(
+      redirectTo ?? (mode === "sign_up" ? "/produtos?welcome=1" : "/produtos")
+    );
     router.refresh();
   }
 
@@ -52,7 +69,34 @@ export function LoginForm() {
           <h1 className="mb-6 text-xl font-semibold text-foreground">
             {mode === "sign_in" ? "Entrar" : "Criar conta"}
           </h1>
+          {searchParams.get("accountDeleted") && (
+            <p className="mb-4 rounded-lg bg-secondary px-3 py-2 text-sm text-muted-foreground">
+              Sua conta foi apagada com sucesso.
+            </p>
+          )}
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            {mode === "sign_up" && (
+              <>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome completo"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="rounded-xl border border-input bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  required
+                  inputMode="numeric"
+                  placeholder="CPF"
+                  value={cpf}
+                  onChange={(e) => setCpf(formatCPF(e.target.value))}
+                  maxLength={14}
+                  className="rounded-xl border border-input bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </>
+            )}
             <input
               type="email"
               required
@@ -61,15 +105,55 @@ export function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               className="rounded-xl border border-input bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <input
-              type="password"
-              required
-              minLength={6}
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded-xl border border-input bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                placeholder="Senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-input bg-secondary px-4 py-3 pr-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <button
               type="submit"
