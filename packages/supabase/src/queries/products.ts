@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../database.types";
+import { productMediaPathFromUrl } from "./product-media";
 
 type Client = SupabaseClient<Database>;
 
@@ -92,4 +93,30 @@ export async function adjustProductStock(client: Client, productId: string, delt
   }
 
   return { ok: true as const, remainingStock: data as number };
+}
+
+// Apaga o anúncio de verdade (linha da tabela + mídia no Storage), não só
+// muda o status. product_media, stories e trade_offers têm `on delete
+// cascade`, mas `order_items.product_id` é `on delete restrict` — se o
+// anúncio já teve pedido, o delete falha (código 23503) e devolvemos
+// `blocked: true` pra quem chamou decidir o que fazer (hoje: cai pro
+// soft-delete de sempre, status = "removed").
+export async function deleteProductCompletely(client: Client, productId: string) {
+  const { data: media } = await client
+    .from("product_media")
+    .select("url")
+    .eq("product_id", productId);
+
+  const paths = (media ?? [])
+    .map((m) => productMediaPathFromUrl(m.url))
+    .filter((p): p is string => !!p);
+  if (paths.length > 0) {
+    await client.storage.from("product-media").remove(paths);
+  }
+
+  const { error } = await client.from("products").delete().eq("id", productId);
+  if (error) {
+    return { deleted: false as const, blocked: error.code === "23503", error: error.message };
+  }
+  return { deleted: true as const, blocked: false, error: null };
 }
