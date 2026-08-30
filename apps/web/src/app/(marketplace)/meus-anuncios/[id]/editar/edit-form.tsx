@@ -32,6 +32,8 @@ import {
   listingTypeDomain,
 } from "@/lib/listing-type";
 import { DELIVERY_OPTIONS, type DeliveryFlags } from "@/lib/delivery-options";
+import { AddressAutocomplete, geocodeAddress, type StructuredAddress } from "@/lib/address-autocomplete";
+import { upscaleToFullHdIfNeeded } from "@/lib/image-resize";
 import { ToggleSwitch } from "@/lib/toggle-switch";
 import { PhotoPickerButton } from "@/lib/photo-picker-button";
 import { PhotoEditorModal } from "@/lib/photo-editor-modal";
@@ -54,6 +56,13 @@ type Product = Database["public"]["Tables"]["products"]["Row"] & {
   subcategory_id?: string | null;
   listing_type?: ListingType;
   contact_phone?: string | null;
+  street?: string | null;
+  number?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 type MediaItem =
@@ -102,6 +111,39 @@ export function EditListingForm({ product }: { product: Product }) {
     allow_seller_delivery: product.allow_seller_delivery ?? false,
     allow_delivery: product.allow_delivery ?? true,
   });
+  const [street, setStreet] = useState<string | null>(product.street ?? null);
+  const [addressNumber, setAddressNumber] = useState(product.number ?? "");
+  const [neighborhood, setNeighborhood] = useState<string | null>(product.neighborhood ?? null);
+  const [city, setCity] = useState<string | null>(product.city ?? null);
+  const [stateUf, setStateUf] = useState<string | null>(product.state ?? null);
+  const [lat, setLat] = useState<number | null>(product.lat ?? null);
+  const [lng, setLng] = useState<number | null>(product.lng ?? null);
+
+  function handleSelectAddress(address: StructuredAddress) {
+    setStreet(address.street);
+    setAddressNumber(address.number ?? "");
+    setNeighborhood(address.neighborhood);
+    setCity(address.city);
+    setStateUf(address.state);
+    setLat(address.lat);
+    setLng(address.lng);
+  }
+
+  // Recalcula a coordenada exata sempre que o número for confirmado/editado —
+  // a sugestão do autocomplete pode não ter interpolado o número certo, e a
+  // localização precisa ser exata pra calcular a rota de entrega depois.
+  useEffect(() => {
+    if (!street || !city || !stateUf || !addressNumber.trim()) return;
+    const handle = setTimeout(async () => {
+      const coords = await geocodeAddress(`${street} ${addressNumber}, ${city} - ${stateUf}, Brasil`);
+      if (coords) {
+        setLat(coords.lat);
+        setLng(coords.lng);
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [street, addressNumber, city, stateUf]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -178,10 +220,11 @@ export function EditListingForm({ product }: { product: Product }) {
           continue;
         }
       }
+      const finalFile = isVideo ? file : await upscaleToFullHdIfNeeded(file);
       accepted.push({
         kind: "new",
-        file,
-        previewUrl: URL.createObjectURL(file),
+        file: finalFile,
+        previewUrl: URL.createObjectURL(finalFile),
         type: isVideo ? "video" : "photo",
         durationSeconds,
       });
@@ -273,6 +316,16 @@ export function EditListingForm({ product }: { product: Product }) {
       setError("Escolha uma categoria.");
       return;
     }
+    if (!street || !city || !stateUf) {
+      setLoading(false);
+      setError("Informe o endereço do anúncio.");
+      return;
+    }
+    if (!addressNumber.trim()) {
+      setLoading(false);
+      setError("Informe o número do endereço — precisamos da localização exata pra calcular a rota de entrega depois.");
+      return;
+    }
     if (listingType !== "produto" && !contactPhone.trim()) {
       setLoading(false);
       setError("Informe um telefone de contato.");
@@ -304,6 +357,13 @@ export function EditListingForm({ product }: { product: Product }) {
       allow_pickup: delivery.allow_pickup,
       allow_seller_delivery: delivery.allow_seller_delivery,
       allow_delivery: delivery.allow_delivery,
+      street,
+      number: addressNumber.trim() || null,
+      neighborhood,
+      city,
+      state: stateUf,
+      lat,
+      lng,
     });
 
     if (updateError) {
@@ -384,15 +444,18 @@ export function EditListingForm({ product }: { product: Product }) {
         className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
       {listingType === "produto" && (
-        <input
-          required
-          type="number"
-          min={0}
-          placeholder="Estoque"
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
-          className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+        <div>
+          <label className="mb-2 block text-sm font-medium text-foreground">Estoque</label>
+          <input
+            required
+            type="number"
+            min={0}
+            placeholder="Estoque"
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            className="w-full rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
       )}
       {listingType !== "produto" && (
         <input
@@ -404,6 +467,27 @@ export function EditListingForm({ product }: { product: Product }) {
           className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
       )}
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-foreground">Endereço do anúncio</label>
+        <AddressAutocomplete onSelect={handleSelectAddress} placeholder="Digite o endereço (rua e número)..." />
+        {street && (
+          <div className="mt-2 flex gap-2">
+            <input
+              required
+              type="text"
+              placeholder="Número"
+              value={addressNumber}
+              onChange={(e) => setAddressNumber(e.target.value)}
+              className="w-24 shrink-0 rounded-lg border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="flex items-center text-sm text-muted-foreground">
+              {street}
+              {neighborhood ? ` - ${neighborhood}` : ""}, {city}/{stateUf}
+            </p>
+          </div>
+        )}
+      </div>
 
       <div>
         <label className="mb-2 block text-sm font-medium text-foreground">
@@ -551,12 +635,15 @@ export function EditListingForm({ product }: { product: Product }) {
             {DELIVERY_OPTIONS.map((opt) => (
               <div key={opt.key} className="flex items-center justify-between gap-3 py-2">
                 <span className="text-sm text-foreground">
-                  {opt.icon} {opt.label}
-                  {opt.recommended && (
-                    <span className="ml-1.5 rounded-full bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold text-brand">
-                      Recomendado
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>{opt.icon}</span>
+                    <span>{opt.label}</span>
+                    {opt.recommended && (
+                      <span className="rounded-full bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold text-brand">
+                        Recomendado
+                      </span>
+                    )}
+                  </span>
                   <span className="block text-xs text-muted-foreground">{opt.hint}</span>
                 </span>
                 <ToggleSwitch

@@ -17,6 +17,10 @@ import {
 // usuário clica) pra não pesar o bundle inicial da página.
 
 const CANVAS_SIZE = { width: 520, height: 520 };
+// Multiplicador de exportação: o canvas fica pequeno na tela (520px) pra
+// edição fluida, mas o export final usa esse fator pra garantir pelo menos
+// Full HD (1920x1080) no resultado, em qualquer proporção de corte.
+const EXPORT_MULTIPLIER = 4;
 
 type AspectPreset = "1:1" | "4:5" | "16:9" | "original";
 
@@ -655,7 +659,7 @@ export function PhotoEditorModal({
     try {
       canvas.discardActiveObject();
       canvas.renderAll();
-      const dataUrl = canvas.toDataURL({ format: "jpeg", quality: 0.92, multiplier: 1 });
+      const dataUrl = canvas.toDataURL({ format: "jpeg", quality: 0.92, multiplier: EXPORT_MULTIPLIER });
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       const file = new File([blob], `foto-editada-${Date.now()}.jpg`, { type: "image/jpeg" });

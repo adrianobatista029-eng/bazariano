@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { createOrder } from "@marketplace/supabase/queries";
+import { createOrder, adjustProductStock } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/lib/cart-context";
 import { formatPriceCents } from "@/lib/format";
@@ -71,6 +71,26 @@ export function CartPanel({
       return;
     }
 
+    // Reserva o estoque de todo o carrinho antes de criar qualquer pedido —
+    // se algum item não tiver estoque suficiente (ex: outro comprador levou
+    // primeiro), desfaz as reservas já feitas nesta tentativa e cancela tudo
+    // sem criar pedido nenhum.
+    const reserved = new Map<string, number>();
+    for (const item of items) {
+      const result = await adjustProductStock(supabase, item.product.id, -item.quantity);
+      if (!result.ok) {
+        // Devolve só o que foi reservado até agora nesta tentativa — nenhum
+        // pedido foi criado ainda, então é seguro desfazer tudo.
+        for (const [productId, quantity] of reserved) {
+          await adjustProductStock(supabase, productId, quantity);
+        }
+        setError(`"${item.product.title}": ${result.error}`);
+        setLoading(false);
+        return;
+      }
+      reserved.set(item.product.id, item.quantity);
+    }
+
     const createdOrderIds: string[] = [];
 
     for (const [sellerId, groupItems] of sellerGroups) {
@@ -95,10 +115,18 @@ export function CartPanel({
       );
 
       if (orderError || !order) {
+        // Devolve o estoque de tudo que ainda não virou pedido (incluindo
+        // este grupo que falhou) — pedidos já criados de outros vendedores
+        // continuam valendo, por isso já foram removidos de `reserved`.
+        for (const [productId, quantity] of reserved) {
+          await adjustProductStock(supabase, productId, quantity);
+        }
         setError(orderError?.message ?? "Erro ao criar pedido.");
         setLoading(false);
         return;
       }
+
+      for (const item of groupItems) reserved.delete(item.product.id);
 
       createdOrderIds.push(order.id);
     }
@@ -192,7 +220,9 @@ export function CartPanel({
             <div className="flex flex-col items-center gap-2">
               <button
                 onClick={() => incrementQuantity(item.product.id)}
-                className="h-6 w-6 rounded-md bg-secondary text-xs hover:bg-brand hover:text-brand-foreground"
+                disabled={item.quantity >= item.product.stock}
+                title={item.quantity >= item.product.stock ? "Sem mais estoque disponível" : undefined}
+                className="h-6 w-6 rounded-md bg-secondary text-xs hover:bg-brand hover:text-brand-foreground disabled:opacity-30 disabled:hover:bg-secondary disabled:hover:text-inherit"
               >
                 +
               </button>

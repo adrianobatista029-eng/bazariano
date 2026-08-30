@@ -29,6 +29,8 @@ import {
   listingTypeDomain,
 } from "@/lib/listing-type";
 import { DELIVERY_OPTIONS, type DeliveryFlags } from "@/lib/delivery-options";
+import { AddressAutocomplete, geocodeAddress, type StructuredAddress } from "@/lib/address-autocomplete";
+import { upscaleToFullHdIfNeeded } from "@/lib/image-resize";
 import { ToggleSwitch } from "@/lib/toggle-switch";
 import { PhotoPickerButton } from "@/lib/photo-picker-button";
 import { PhotoEditorModal } from "@/lib/photo-editor-modal";
@@ -81,9 +83,13 @@ export default function VenderPage() {
     allow_delivery: true,
   });
   const [media, setMedia] = useState<PendingMedia[]>([]);
-  const [location, setLocation] = useState<{ city: string | null; state: string | null } | null>(
-    null
-  );
+  const [street, setStreet] = useState<string | null>(null);
+  const [addressNumber, setAddressNumber] = useState("");
+  const [neighborhood, setNeighborhood] = useState<string | null>(null);
+  const [city, setCity] = useState<string | null>(null);
+  const [stateUf, setStateUf] = useState<string | null>(null);
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
@@ -93,15 +99,6 @@ export default function VenderPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
-      const { data } = await (supabase.from("profiles") as any)
-        .select("city, state")
-        .eq("id", user.id)
-        .single();
-      setLocation({ city: data?.city ?? null, state: data?.state ?? null });
-    });
-
     listCategoriesWithSubcategories(supabase).then(({ categories: cats, subcategories: subs }) => {
       setCategories(cats);
       setSubcategories(subs);
@@ -112,6 +109,32 @@ export default function VenderPage() {
       }
     });
   }, []);
+
+  function handleSelectAddress(address: StructuredAddress) {
+    setStreet(address.street);
+    setAddressNumber(address.number ?? "");
+    setNeighborhood(address.neighborhood);
+    setCity(address.city);
+    setStateUf(address.state);
+    setLat(address.lat);
+    setLng(address.lng);
+  }
+
+  // Recalcula a coordenada exata sempre que o número for confirmado/editado —
+  // a sugestão do autocomplete pode não ter interpolado o número certo, e a
+  // localização precisa ser exata pra calcular a rota de entrega depois.
+  useEffect(() => {
+    if (!street || !city || !stateUf || !addressNumber.trim()) return;
+    const handle = setTimeout(async () => {
+      const coords = await geocodeAddress(`${street} ${addressNumber}, ${city} - ${stateUf}, Brasil`);
+      if (coords) {
+        setLat(coords.lat);
+        setLng(coords.lng);
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [street, addressNumber, city, stateUf]);
 
   function handleCategoryChange(newCategoryId: string) {
     setCategoryId(newCategoryId);
@@ -163,9 +186,10 @@ export default function VenderPage() {
           continue;
         }
       }
+      const finalFile = isVideo ? file : await upscaleToFullHdIfNeeded(file);
       accepted.push({
-        file,
-        previewUrl: URL.createObjectURL(file),
+        file: finalFile,
+        previewUrl: URL.createObjectURL(finalFile),
         type: isVideo ? "video" : "photo",
         durationSeconds,
       });
@@ -218,6 +242,12 @@ export default function VenderPage() {
     }
     if (!categoryId) {
       return "Escolha uma categoria.";
+    }
+    if (!street || !city || !stateUf) {
+      return "Informe o endereço do anúncio.";
+    }
+    if (!addressNumber.trim()) {
+      return "Informe o número do endereço — precisamos da localização exata pra calcular a rota de entrega depois.";
     }
     if (listingType !== "produto" && !contactPhone.trim()) {
       return "Informe um telefone de contato.";
@@ -288,6 +318,13 @@ export default function VenderPage() {
       allow_pickup: delivery.allow_pickup,
       allow_seller_delivery: delivery.allow_seller_delivery,
       allow_delivery: delivery.allow_delivery,
+      street,
+      number: addressNumber.trim() || null,
+      neighborhood,
+      city,
+      state: stateUf,
+      lat,
+      lng,
     });
 
     if (createError || !product) {
@@ -319,12 +356,12 @@ export default function VenderPage() {
   }
 
   const cover = media[0];
-  const locationLabel =
-    location?.city && location?.state
-      ? `${location.city}, ${location.state}`
-      : location
-        ? "Não definida (edite no seu perfil)"
-        : "...";
+  const addressLabel =
+    street && city && stateUf
+      ? `${street}${addressNumber ? `, ${addressNumber}` : ""}${
+          neighborhood ? ` - ${neighborhood}` : ""
+        }, ${city}/${stateUf}`
+      : "Endereço não informado";
   const priceCentsPreview = price ? Math.round(parseFloat(price.replace(",", ".")) * 100) : null;
   const activeDeliveryOptions = DELIVERY_OPTIONS.filter((opt) => delivery[opt.key]);
 
@@ -475,18 +512,43 @@ export default function VenderPage() {
     </div>
   );
 
+  const addressField = (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-foreground">Endereço do anúncio</label>
+      <AddressAutocomplete onSelect={handleSelectAddress} placeholder="Digite o endereço (rua e número)..." />
+      {street && (
+        <div className="mt-2 flex gap-2">
+          <input
+            required
+            type="text"
+            placeholder="Número"
+            value={addressNumber}
+            onChange={(e) => setAddressNumber(e.target.value)}
+            className="w-24 shrink-0 rounded-lg border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <p className="flex items-center text-sm text-muted-foreground">
+            {street}
+            {neighborhood ? ` - ${neighborhood}` : ""}, {city}/{stateUf}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
   const deliveryField = (
     <div className="rounded-lg border border-border p-3">
-      <p className="mb-2 text-sm font-medium text-foreground">📍 Localização: {locationLabel}</p>
       {DELIVERY_OPTIONS.map((opt) => (
         <div key={opt.key} className="flex items-center justify-between gap-3 py-2">
           <span className="text-sm text-foreground">
-            {opt.icon} {opt.label}
-            {opt.recommended && (
-              <span className="ml-1.5 rounded-full bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold text-brand">
-                Recomendado
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1.5">
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
+              {opt.recommended && (
+                <span className="rounded-full bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold text-brand">
+                  Recomendado
+                </span>
+              )}
+            </span>
             <span className="block text-xs text-muted-foreground">{opt.hint}</span>
           </span>
           <ToggleSwitch
@@ -544,15 +606,18 @@ export default function VenderPage() {
         className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
       {listingType === "produto" && (
-        <input
-          required
-          type="number"
-          min={0}
-          placeholder="Estoque"
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
-          className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+        <div>
+          <label className="mb-2 block text-sm font-medium text-foreground">Estoque</label>
+          <input
+            required
+            type="number"
+            min={0}
+            placeholder="Estoque"
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            className="w-full rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
       )}
       {listingType !== "produto" && (
         <input
@@ -604,7 +669,7 @@ export default function VenderPage() {
         {listingType !== "produto" && contactPhone && (
           <p className="mt-1 text-sm text-muted-foreground">📞 {contactPhone}</p>
         )}
-        <p className="mt-1 text-sm text-muted-foreground">📍 {locationLabel}</p>
+        <p className="mt-1 text-sm text-muted-foreground">📍 {addressLabel}</p>
 
         <div className="my-4 h-px bg-border" />
 
@@ -623,8 +688,9 @@ export default function VenderPage() {
             ) : (
               <div className="flex flex-col gap-1">
                 {activeDeliveryOptions.map((opt) => (
-                  <p key={opt.key} className="text-sm text-muted-foreground">
-                    {opt.icon} {opt.label}
+                  <p key={opt.key} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span>{opt.icon}</span>
+                    <span>{opt.label}</span>
                   </p>
                 ))}
               </div>
@@ -645,6 +711,7 @@ export default function VenderPage() {
             <form onSubmit={handleAdvance} className="flex flex-col gap-3">
               {listingTypeField}
               {basicFields}
+              {addressField}
               {mediaPickerField}
               {mediaGrid}
               {categoryField}
@@ -694,6 +761,7 @@ export default function VenderPage() {
           <h1 className="mb-1 text-lg font-semibold">Novo Anúncio</h1>
           {listingTypeField}
           {basicFields}
+          {addressField}
           {mediaPickerField}
           {mediaGrid}
           {categoryField}

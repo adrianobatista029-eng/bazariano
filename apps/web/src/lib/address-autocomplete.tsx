@@ -40,6 +40,26 @@ function parseFeature(feature: MapboxFeature): StructuredAddress {
   };
 }
 
+// Geocodifica um endereço completo (rua + número) pra pegar a coordenada
+// exata daquele ponto — usado depois que o usuário confirma/edita o número
+// manualmente, já que a sugestão original do autocomplete pode não ter
+// interpolado o número certo.
+export async function geocodeAddress(query: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      query
+    )}.json?access_token=${token}&country=BR&types=address&limit=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const feature: MapboxFeature | undefined = data.features?.[0];
+    if (!feature) return null;
+    return { lat: feature.center[1], lng: feature.center[0] };
+  } catch {
+    return null;
+  }
+}
+
 export function AddressAutocomplete({
   onSelect,
   placeholder = "Digite seu endereço...",
@@ -52,8 +72,24 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const skipNextSearchRef = useRef(false);
 
   useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (query.trim().length < 3) {
       setResults([]);
@@ -85,13 +121,14 @@ export function AddressAutocomplete({
 
   function handleSelect(item: { label: string; feature: MapboxFeature }) {
     onSelect(parseFeature(item.feature), item.label);
+    skipNextSearchRef.current = true;
     setQuery(item.label);
     setResults([]);
     setOpen(false);
   }
 
   return (
-    <div className="relative w-full">
+    <div ref={containerRef} className="relative w-full">
       <input
         type="text"
         value={query}

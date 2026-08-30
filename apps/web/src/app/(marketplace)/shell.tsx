@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { sweepMyPendingStoryCleanup } from "@marketplace/supabase/queries";
 import { useCart } from "@/lib/cart-context";
 import { ThemeToggle } from "@/lib/theme-toggle";
 import { resizeImageToDataUrl } from "@/lib/image-resize";
-import type { StructuredAddress } from "@/lib/address-autocomplete";
 import { CartPanel } from "./cart-panel";
 import { ProfileModal } from "./profile-modal";
 import { InstallAppBanner } from "@/lib/install-app-banner";
+import { CategoryMenu } from "./produtos/category-menu";
 
 const NAV_ITEMS = [
   { href: "/produtos", label: "Início", icon: "🏠" },
@@ -29,11 +30,6 @@ export function MarketplaceShell({
   displayName,
   email,
   cpf,
-  street,
-  number,
-  neighborhood,
-  city,
-  state,
   avatarUrl,
   role,
   memberSince,
@@ -45,11 +41,6 @@ export function MarketplaceShell({
   displayName: string;
   email: string;
   cpf: string | null;
-  street: string | null;
-  number: string | null;
-  neighborhood: string | null;
-  city: string | null;
-  state: string | null;
   avatarUrl: string | null;
   role: string | null;
   memberSince: string | null;
@@ -65,6 +56,15 @@ export function MarketplaceShell({
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const showWelcomeBanner =
     !welcomeDismissed && !avatarUrl && searchParams.get("welcome") === "1";
+
+  // Stories apagadas (expiraram, o anúncio saiu ou o estoque zerou) só têm a
+  // linha removida no banco — o arquivo no Storage só o próprio dono pode
+  // apagar. Varre a fila pendente dele silenciosamente sempre que acessa o
+  // marketplace logado.
+  useEffect(() => {
+    if (!userId) return;
+    sweepMyPendingStoryCleanup(createClient(), userId);
+  }, [userId]);
 
   function dismissWelcomeBanner() {
     setWelcomeDismissed(true);
@@ -89,25 +89,6 @@ export function MarketplaceShell({
     if (!userId) return { error: "Não autenticado." };
     const supabase = createClient();
     const { error } = await supabase.from("profiles").update({ full_name: name }).eq("id", userId);
-    if (error) return { error: error.message };
-    router.refresh();
-    return { error: null };
-  }
-
-  async function handleSaveLocation(address: StructuredAddress) {
-    if (!userId) return { error: "Não autenticado." };
-    const supabase = createClient();
-    const { error } = await (supabase.from("profiles") as any)
-      .update({
-        street: address.street,
-        number: address.number,
-        neighborhood: address.neighborhood,
-        city: address.city,
-        state: address.state,
-        lat: address.lat,
-        lng: address.lng,
-      })
-      .eq("id", userId);
     if (error) return { error: error.message };
     router.refresh();
     return { error: null };
@@ -208,7 +189,7 @@ export function MarketplaceShell({
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <header className="mb-6 flex flex-wrap items-center gap-4 md:mb-8">
+        <header className="mb-4 flex flex-wrap items-center gap-4 md:mb-5">
           <button
             onClick={() => setMobileNavOpen(true)}
             aria-label="Abrir menu"
@@ -233,6 +214,7 @@ export function MarketplaceShell({
               </form>
 
               <div className="ml-auto flex items-center gap-4">
+                <CategoryMenu />
                 <ThemeToggle />
                 <button
                   onClick={() => setCartOpen(true)}
@@ -240,21 +222,8 @@ export function MarketplaceShell({
                   aria-label="Carrinho"
                   className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="9" cy="21" r="1"></circle>
-                    <circle cx="20" cy="21" r="1"></circle>
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                  </svg>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/carrinho-de-compras.png" alt="" className="h-5 w-5" />
                   {itemCount > 0 && (
                     <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground">
                       {itemCount}
@@ -337,17 +306,11 @@ export function MarketplaceShell({
           onClose={() => setProfileOpen(false)}
           onLogout={handleLogout}
           onSaveName={handleSaveName}
-          onSaveLocation={handleSaveLocation}
           onDeleteAccount={handleDeleteAccount}
           onUploadAvatar={handleUploadAvatar}
           displayName={displayName}
           email={email}
           cpf={cpf}
-          street={street}
-          number={number}
-          neighborhood={neighborhood}
-          city={city}
-          state={state}
           avatarUrl={avatarUrl}
           role={role}
           memberSince={memberSince}

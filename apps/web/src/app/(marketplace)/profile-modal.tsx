@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatCPF } from "@/lib/cpf";
-import { AddressAutocomplete, type StructuredAddress } from "@/lib/address-autocomplete";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
@@ -20,17 +19,11 @@ export function ProfileModal({
   onClose,
   onLogout,
   onSaveName,
-  onSaveLocation,
   onDeleteAccount,
   onUploadAvatar,
   displayName,
   email,
   cpf,
-  street,
-  number,
-  neighborhood,
-  city,
-  state,
   avatarUrl,
   role,
   memberSince,
@@ -39,19 +32,11 @@ export function ProfileModal({
   onClose: () => void;
   onLogout: () => void;
   onSaveName: (name: string) => { error: string | null } | undefined | Promise<{ error: string | null } | undefined>;
-  onSaveLocation: (
-    address: StructuredAddress
-  ) => { error: string | null } | undefined | Promise<{ error: string | null } | undefined>;
   onDeleteAccount: () => void | Promise<void>;
   onUploadAvatar: (file: File) => void | Promise<void>;
   displayName: string;
   email: string;
   cpf: string | null;
-  street: string | null;
-  number: string | null;
-  neighborhood: string | null;
-  city: string | null;
-  state: string | null;
   avatarUrl: string | null;
   role: string | null;
   memberSince: string | null;
@@ -60,9 +45,6 @@ export function ProfileModal({
   const [nameInput, setNameInput] = useState(displayName);
   const [savingName, setSavingName] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [editingLocation, setEditingLocation] = useState(false);
-  const [savingLocation, setSavingLocation] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -83,8 +65,6 @@ export function ProfileModal({
       setNameInput(displayName);
       setEditingName(false);
       setNameError(null);
-      setEditingLocation(false);
-      setLocationError(null);
       setConfirmingDelete(false);
     }
   }, [open, displayName]);
@@ -101,18 +81,6 @@ export function ProfileModal({
       return;
     }
     setEditingName(false);
-  }
-
-  async function handleSelectAddress(address: StructuredAddress) {
-    setSavingLocation(true);
-    setLocationError(null);
-    const result = await onSaveLocation(address);
-    setSavingLocation(false);
-    if (result?.error) {
-      setLocationError(result.error);
-      return;
-    }
-    setEditingLocation(false);
   }
 
   async function handleDeleteAccount() {
@@ -259,41 +227,6 @@ export function ProfileModal({
           <div className="flex items-center justify-between gap-4">
             <dt className="text-muted-foreground">Membro desde</dt>
             <dd className="text-right font-medium text-foreground">{formatMemberSince(memberSince)}</dd>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-muted-foreground">Localização</dt>
-              {!editingLocation && (
-                <dd className="flex items-center gap-1.5 text-right font-medium text-foreground">
-                  {street && city && state
-                    ? `${street}${number ? `, ${number}` : ""}${neighborhood ? ` - ${neighborhood}` : ""}, ${city}/${state}`
-                    : "Não informado"}
-                  <button
-                    onClick={() => setEditingLocation(true)}
-                    aria-label="Editar localização"
-                    title="Editar localização"
-                    className="text-sm text-muted-foreground hover:text-brand"
-                  >
-                    ✏️
-                  </button>
-                </dd>
-              )}
-            </div>
-            {editingLocation && (
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-1.5">
-                  <AddressAutocomplete onSelect={handleSelectAddress} />
-                  <button
-                    onClick={() => setEditingLocation(false)}
-                    className="shrink-0 rounded-lg bg-secondary px-2 py-2 text-xs text-foreground"
-                  >
-                    ✕
-                  </button>
-                </div>
-                {savingLocation && <p className="text-xs text-muted-foreground">Salvando...</p>}
-                {locationError && <p className="text-xs text-destructive">{locationError}</p>}
-              </div>
-            )}
           </div>
         </dl>
 

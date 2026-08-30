@@ -32,6 +32,17 @@ export function AddToCartButton({
     );
   }
 
+  if (product.stock <= 0) {
+    return (
+      <button
+        disabled
+        className="mt-6 cursor-not-allowed rounded-xl bg-secondary px-6 py-3 font-semibold text-muted-foreground"
+      >
+        Esgotado
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={handleAdd}

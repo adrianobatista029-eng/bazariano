@@ -1,62 +1,161 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import type { Database } from "@marketplace/supabase";
+import type { StoryContentType } from "@marketplace/supabase/queries";
+import { CreateStoryModal, JUST_PUBLISHED_STORY_KEY } from "./create-story-modal";
 import { StoryViewer } from "./story-viewer";
+import { StoryRing } from "./story-ring";
 
-type Product = Database["public"]["Tables"]["products"]["Row"] & {
-  product_media: Database["public"]["Tables"]["product_media"]["Row"][];
+export type StoryWithProduct = {
+  id: string;
+  media_url: string;
+  media_type: "photo" | "video";
+  story_type: StoryContentType;
+  created_at: string;
+  product_id: string;
+  products: {
+    id: string;
+    title: string;
+    price_cents: number;
+    listing_type: string | null;
+    status: string;
+  } | null;
 };
 
-export function StoriesTray({ products }: { products: Product[] }) {
-  const withMedia = products.filter((p) => p.product_media.length > 0);
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+export type StoryGroup = {
+  seller: { id: string; full_name: string | null; avatar_url: string | null };
+  stories: StoryWithProduct[];
+};
 
-  if (withMedia.length === 0) return null;
+const SEEN_STORY_IDS_KEY = "bazariano-seen-story-ids";
+
+function loadSeenIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_STORY_IDS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSeenIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(SEEN_STORY_IDS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // localStorage indisponível (modo privado, etc.) — segue sem persistir.
+  }
+}
+
+export function StoriesTray({
+  storyGroups,
+  currentUserId,
+  myActiveProducts,
+}: {
+  storyGroups: StoryGroup[];
+  currentUserId: string | null;
+  myActiveProducts: { id: string; title: string }[];
+}) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [viewerGroupIndex, setViewerGroupIndex] = useState<number | null>(null);
+  const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
+  const [justPublishedId, setJustPublishedId] = useState<string | null>(null);
+
+  // Carrega o que já foi visto (por dispositivo) e, se acabou de publicar
+  // (veio do CreateStoryModal), guarda o id pra tocar a animação uma vez.
+  useEffect(() => {
+    setSeenIds(loadSeenIds());
+    const justPublished = sessionStorage.getItem(JUST_PUBLISHED_STORY_KEY);
+    if (justPublished) {
+      setJustPublishedId(justPublished);
+      sessionStorage.removeItem(JUST_PUBLISHED_STORY_KEY);
+      setTimeout(() => setJustPublishedId(null), 900);
+    }
+  }, []);
+
+  function markSeen(storyId: string) {
+    setSeenIds((prev) => {
+      const next = new Set(prev ?? []);
+      next.add(storyId);
+      saveSeenIds(next);
+      return next;
+    });
+  }
+
+  // Stories novas aparecem primeiro; visualizadas continuam disponíveis, só
+  // vão pro final com o anel cinza.
+  const orderedGroups = useMemo(() => {
+    if (!seenIds) return storyGroups;
+    const isGroupNew = (g: StoryGroup) => g.stories.some((s) => !seenIds.has(s.id));
+    return [...storyGroups].sort((a, b) => Number(isGroupNew(b)) - Number(isGroupNew(a)));
+  }, [storyGroups, seenIds]);
+
+  if (!currentUserId && storyGroups.length === 0) return null;
 
   return (
     <>
-      <div className="flex gap-4 overflow-x-auto pb-1">
-        {withMedia.map((product, i) => {
-          const cover = product.product_media[0]!;
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {currentUserId && (
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex shrink-0 flex-col items-center gap-1"
+          >
+            <div className="flex h-16 w-16 items-center justify-center rounded-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/instagram-stories.png" alt="" className="h-16 w-16" />
+            </div>
+            <span className="w-16 truncate text-center text-xs text-muted-foreground">Seu story</span>
+          </button>
+        )}
+
+        {orderedGroups.map((group) => {
+          const isNew = !seenIds || group.stories.some((s) => !seenIds.has(s.id));
+          const headStoryType = group.stories[0]?.story_type;
+          const isPublishing = group.stories.some((s) => s.id === justPublishedId);
           return (
             <button
-              key={product.id}
-              onClick={() => setOpenIndex(i)}
-              className="flex shrink-0 flex-col items-center gap-1.5"
+              key={group.seller.id}
+              onClick={() => setViewerGroupIndex(storyGroups.indexOf(group))}
+              className="flex shrink-0 flex-col items-center gap-1"
             >
-              <div className="rounded-full bg-gradient-to-tr from-brand to-primary p-[2px]">
-                <div className="rounded-full bg-background p-[2px]">
-                  <div className="relative h-16 w-16 overflow-hidden rounded-full bg-muted">
-                    {cover.type === "video" ? (
-                      // eslint-disable-next-line jsx-a11y/media-has-caption
-                      <video src={cover.url} className="h-full w-full object-cover" muted />
-                    ) : (
-                      <Image
-                        src={cover.url}
-                        alt={product.title}
-                        fill
-                        sizes="64px"
-                        className="object-cover"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
+              <StoryRing
+                state={isNew ? "new" : "viewed"}
+                storyType={headStoryType}
+                publishing={isPublishing}
+              >
+                {group.seller.avatar_url ? (
+                  <Image
+                    src={group.seller.avatar_url}
+                    alt={group.seller.full_name ?? ""}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="text-lg font-bold text-muted-foreground">
+                    {(group.seller.full_name ?? "?").charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </StoryRing>
               <span className="w-16 truncate text-center text-xs text-muted-foreground">
-                {product.title}
+                {group.seller.full_name ?? "Vendedor"}
               </span>
             </button>
           );
         })}
       </div>
 
-      {openIndex !== null && (
+      {createOpen && (
+        <CreateStoryModal myActiveProducts={myActiveProducts} onClose={() => setCreateOpen(false)} />
+      )}
+
+      {viewerGroupIndex !== null && (
         <StoryViewer
-          products={withMedia}
-          initialIndex={openIndex}
-          onClose={() => setOpenIndex(null)}
+          groups={storyGroups}
+          initialGroupIndex={viewerGroupIndex}
+          currentUserId={currentUserId}
+          onView={markSeen}
+          onClose={() => setViewerGroupIndex(null)}
         />
       )}
     </>

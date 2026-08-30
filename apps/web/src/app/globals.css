@@ -175,3 +175,165 @@
     letter-spacing: -0.02em;
   }
 }
+
+/* ---------------------------------------------------------------
+   Stories: anel de destaque com identidade própria (dourado → magenta →
+   roxo), independente da paleta azul/laranja do resto do app.
+   --------------------------------------------------------------- */
+:root {
+  --story-gold: #f4b942;
+  --story-gold-soft: #ffd873;
+  --story-magenta: #ea3e83;
+  --story-purple: #8b3ef2;
+  --story-viewed-ring: color-mix(in oklch, var(--color-muted-foreground) 45%, transparent);
+  --story-glow: color-mix(in srgb, var(--story-purple) 35%, transparent);
+}
+
+.story-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.story-ring.is-pressed {
+  transform: scale(1.05);
+}
+.story-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  padding: 2.5px;
+  background: conic-gradient(
+    from 0deg,
+    var(--story-gold-soft),
+    var(--story-magenta),
+    var(--story-purple),
+    var(--story-gold-soft)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: story-ring-spin 7s linear infinite;
+}
+.story-ring[data-state="none"]::before,
+.story-ring[data-state="viewed"]::before {
+  content: none;
+  animation: none;
+}
+.story-ring[data-state="none"] {
+  box-shadow: inset 0 0 0 2px var(--color-border);
+}
+.story-ring[data-state="viewed"] {
+  box-shadow: inset 0 0 0 2.5px var(--story-viewed-ring);
+}
+.story-ring[data-state="new"],
+.story-ring.is-publishing {
+  filter: drop-shadow(0 0 7px var(--story-glow));
+}
+.story-ring[data-pulse="true"] {
+  animation: story-ring-pulse 2.6s ease-in-out infinite;
+}
+.story-ring[data-shimmer="true"]::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 320deg,
+    rgba(255, 255, 255, 0.9) 335deg,
+    transparent 350deg
+  );
+  animation: story-shimmer-orbit 3.4s linear infinite;
+  mix-blend-mode: screen;
+}
+.story-ring.is-publishing {
+  animation: story-publish-pop 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes story-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes story-shimmer-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes story-ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
+  }
+}
+@keyframes story-publish-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.story-ripple {
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--story-gold-soft);
+  opacity: 0.5;
+  animation: story-ripple-anim 0.5s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes story-ripple-anim {
+  from {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.story-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--story-gold-soft);
+  opacity: 0;
+  pointer-events: none;
+  animation: story-particle-burst 0.85s ease-out forwards;
+}
+@keyframes story-particle-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.2);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-ring::before,
+  .story-ring[data-pulse="true"],
+  .story-ring[data-shimmer="true"]::after,
+  .story-ring.is-publishing {
+    animation: none !important;
+  }
+}
