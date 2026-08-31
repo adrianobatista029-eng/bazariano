@@ -1,49 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Database } from "@marketplace/supabase";
-import type {
-  ProductCondition,
-  PackageSize,
-  Category,
-  Subcategory,
-  ListingType,
-} from "@marketplace/supabase/queries";
-import {
-  createProductMedia,
-  deleteProductMedia,
-  deleteProductMediaFile,
-  productMediaPathFromUrl,
-  productMediaStoragePath,
-  updateProduct,
-  updateProductMediaPosition,
-  uploadProductMedia,
-  listCategoriesWithSubcategories,
-} from "@marketplace/supabase/queries";
+import type { ProductCondition, PackageSize, ListingType } from "@marketplace/supabase/queries";
+import { updateProduct } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
-import { PRODUCT_CONDITIONS } from "@/lib/product-condition";
-import { PACKAGE_SIZES } from "@/lib/package-size";
-import {
-  LISTING_TYPES,
-  PRICE_LABEL,
-  DESCRIPTION_PLACEHOLDER,
-  categoryDomain,
-  listingTypeDomain,
-} from "@/lib/listing-type";
-import { DELIVERY_OPTIONS, type DeliveryFlags } from "@/lib/delivery-options";
-import { AddressAutocomplete, geocodeAddress, type StructuredAddress } from "@/lib/address-autocomplete";
-import { upscaleToFullHdIfNeeded } from "@/lib/image-resize";
-import { ToggleSwitch } from "@/lib/toggle-switch";
-import { PhotoPickerButton } from "@/lib/photo-picker-button";
-import { PhotoEditorModal } from "@/lib/photo-editor-modal";
-import { MediaThumbnailMenu } from "@/lib/media-thumbnail-menu";
-import { useDragReorder } from "@/lib/use-drag-reorder";
-
-const MAX_FILE_MB = 50;
-const MAX_VIDEO_SECONDS = 30;
-const MAX_MEDIA_ITEMS = 10;
-const MIN_MEDIA_ITEMS = 5;
+import { PRODUCT_CONDITION_LABEL } from "@/lib/product-condition";
+import { PACKAGE_SIZE_LABEL } from "@/lib/package-size";
+import { PRICE_LABEL } from "@/lib/listing-type";
+import { DELIVERY_OPTIONS } from "@/lib/delivery-options";
+import { formatPriceCents } from "@/lib/format";
+import { PriceInput } from "@/lib/price-input";
 
 type Product = Database["public"]["Tables"]["products"]["Row"] & {
   product_media: Database["public"]["Tables"]["product_media"]["Row"][];
@@ -61,621 +29,143 @@ type Product = Database["public"]["Tables"]["products"]["Row"] & {
   neighborhood?: string | null;
   city?: string | null;
   state?: string | null;
-  lat?: number | null;
-  lng?: number | null;
 };
 
-type MediaItem =
-  | { kind: "existing"; id: string; url: string; type: "photo" | "video" }
-  | {
-      kind: "new";
-      file: File;
-      previewUrl: string;
-      type: "photo" | "video";
-      durationSeconds?: number;
-    };
-
-function mediaUrl(item: MediaItem) {
-  return item.kind === "existing" ? item.url : item.previewUrl;
-}
-
-function readVideoDuration(file: File): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(video.src);
-      resolve(video.duration);
-    };
-    video.onerror = () => reject(new Error("Não foi possível ler o vídeo."));
-    video.src = URL.createObjectURL(file);
-  });
-}
-
+// Depois de publicado, o anúncio não pode mais ser alterado — só o preço, e
+// só pra baixo (nunca pra cima). Editar tudo de novo poderia enganar quem já
+// viu o anúncio antes; baixar o preço não tem esse problema.
 export function EditListingForm({ product }: { product: Product }) {
   const router = useRouter();
-  const [listingType, setListingType] = useState<ListingType>(product.listing_type ?? "produto");
-  const [title, setTitle] = useState(product.title);
-  const [description, setDescription] = useState(product.description ?? "");
-  const [price, setPrice] = useState((product.price_cents / 100).toFixed(2).replace(".", ","));
-  const [stock, setStock] = useState(String(product.stock));
-  const [contactPhone, setContactPhone] = useState(product.contact_phone ?? "");
-  const [condition, setCondition] = useState<ProductCondition>(product.condition ?? "novo");
-  const [packageSize, setPackageSize] = useState<PackageSize>(product.package_size ?? "medio");
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [categoryId, setCategoryId] = useState(product.category_id ?? "");
-  const [subcategoryId, setSubcategoryId] = useState(product.subcategory_id ?? "");
-  const [delivery, setDelivery] = useState<DeliveryFlags>({
-    allow_pickup: product.allow_pickup ?? true,
-    allow_seller_delivery: product.allow_seller_delivery ?? false,
-    allow_delivery: product.allow_delivery ?? true,
-  });
-  const [street, setStreet] = useState<string | null>(product.street ?? null);
-  const [addressNumber, setAddressNumber] = useState(product.number ?? "");
-  const [neighborhood, setNeighborhood] = useState<string | null>(product.neighborhood ?? null);
-  const [city, setCity] = useState<string | null>(product.city ?? null);
-  const [stateUf, setStateUf] = useState<string | null>(product.state ?? null);
-  const [lat, setLat] = useState<number | null>(product.lat ?? null);
-  const [lng, setLng] = useState<number | null>(product.lng ?? null);
-
-  function handleSelectAddress(address: StructuredAddress) {
-    setStreet(address.street);
-    setAddressNumber(address.number ?? "");
-    setNeighborhood(address.neighborhood);
-    setCity(address.city);
-    setStateUf(address.state);
-    setLat(address.lat);
-    setLng(address.lng);
-  }
-
-  // Recalcula a coordenada exata sempre que o número for confirmado/editado —
-  // a sugestão do autocomplete pode não ter interpolado o número certo, e a
-  // localização precisa ser exata pra calcular a rota de entrega depois.
-  useEffect(() => {
-    if (!street || !city || !stateUf || !addressNumber.trim()) return;
-    const handle = setTimeout(async () => {
-      const coords = await geocodeAddress(`${street} ${addressNumber}, ${city} - ${stateUf}, Brasil`);
-      if (coords) {
-        setLat(coords.lat);
-        setLng(coords.lng);
-      }
-    }, 600);
-    return () => clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [street, addressNumber, city, stateUf]);
-
-  useEffect(() => {
-    const supabase = createClient();
-    listCategoriesWithSubcategories(supabase).then(({ categories: cats, subcategories: subs }) => {
-      setCategories(cats);
-      setSubcategories(subs);
-      if (!categoryId && cats.length > 0) {
-        setCategoryId(cats[0]!.id);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function handleCategoryChange(newCategoryId: string) {
-    setCategoryId(newCategoryId);
-    const firstSub = subcategories.find((s) => s.category_id === newCategoryId);
-    setSubcategoryId(firstSub?.id ?? "");
-  }
-
-  function handleListingTypeChange(newType: ListingType) {
-    setListingType(newType);
-    const domain = listingTypeDomain(newType);
-    const firstMatch = categories.find((c) => categoryDomain(c.name) === domain);
-    if (firstMatch) {
-      handleCategoryChange(firstMatch.id);
-    } else {
-      setCategoryId("");
-      setSubcategoryId("");
-    }
-  }
-  const [media, setMedia] = useState<MediaItem[]>(
-    product.product_media.map((m) => ({
-      kind: "existing",
-      id: m.id,
-      url: m.url,
-      type: m.type as "photo" | "video",
-    }))
-  );
-  const [deleted, setDeleted] = useState<{ id: string; url: string }[]>([]);
+  const listingType = product.listing_type ?? "produto";
+  const originalPriceCents = product.price_cents;
+  const [priceCents, setPriceCents] = useState(originalPriceCents);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
-  const { dragIndex, setItemRef, onPointerDown, shouldSuppressClick } = useDragReorder<MediaItem>(setMedia);
 
-  async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    setError(null);
-
-    const remainingSlots = MAX_MEDIA_ITEMS - media.length;
-    const accepted: MediaItem[] = [];
-    for (const file of files) {
-      if (accepted.length >= remainingSlots) {
-        setError(`Limite de ${MAX_MEDIA_ITEMS} fotos/vídeos por anúncio atingido.`);
-        break;
-      }
-      if (file.size > MAX_FILE_MB * 1024 * 1024) {
-        setError(`"${file.name}" passa de ${MAX_FILE_MB}MB e foi ignorado.`);
-        continue;
-      }
-      const isVideo = file.type.startsWith("video/");
-      let durationSeconds: number | undefined;
-      if (isVideo) {
-        try {
-          durationSeconds = await readVideoDuration(file);
-          if (durationSeconds > MAX_VIDEO_SECONDS) {
-            setError(`"${file.name}" passa de ${MAX_VIDEO_SECONDS}s e foi ignorado.`);
-            continue;
-          }
-        } catch {
-          setError(`Não foi possível ler "${file.name}".`);
-          continue;
-        }
-      }
-      const finalFile = isVideo ? file : await upscaleToFullHdIfNeeded(file);
-      accepted.push({
-        kind: "new",
-        file: finalFile,
-        previewUrl: URL.createObjectURL(finalFile),
-        type: isVideo ? "video" : "photo",
-        durationSeconds,
-      });
-    }
-
-    setMedia((prev) => [...prev, ...accepted]);
-  }
-
-  function removeMedia(index: number) {
-    setMedia((prev) => {
-      const item = prev[index];
-      if (!item) return prev;
-      if (item.kind === "existing") {
-        setDeleted((d) => [...d, { id: item.id, url: item.url }]);
-      } else {
-        URL.revokeObjectURL(item.previewUrl);
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-  }
-
-  function handleEditedMedia(index: number, file: File) {
-    setMedia((prev) => {
-      const item = prev[index];
-      if (!item) return prev;
-      if (item.kind === "existing") {
-        setDeleted((d) => [...d, { id: item.id, url: item.url }]);
-      } else {
-        URL.revokeObjectURL(item.previewUrl);
-      }
-      const next = [...prev];
-      next[index] = { kind: "new", file, previewUrl: URL.createObjectURL(file), type: "photo" };
-      return next;
-    });
-    setEditingIndex(null);
-  }
-
-  function setCover(index: number) {
-    setMedia((prev) => {
-      const item = prev[index];
-      if (!item || item.type !== "photo") return prev;
-      const rest = prev.filter((_, i) => i !== index);
-      return [item, ...rest];
-    });
-  }
+  const cover = product.product_media[0];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    if (!priceCents || priceCents <= 0) {
+      setError("Informe um preço válido.");
+      return;
+    }
+    if (priceCents > originalPriceCents) {
+      setError("Você só pode baixar o preço, nunca aumentar.");
+      return;
+    }
+
+    setLoading(true);
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push(`/login?redirectTo=/meus-anuncios/${product.id}/editar`);
-      return;
-    }
-
-    if (media.length < MIN_MEDIA_ITEMS) {
-      setLoading(false);
-      setError(`Adicione pelo menos ${MIN_MEDIA_ITEMS} fotos/vídeos.`);
-      return;
-    }
-    if (!media.some((item) => item.type === "video")) {
-      setLoading(false);
-      setError("Adicione pelo menos 1 vídeo (estilo stories, até 30s).");
-      return;
-    }
-    if (!media.some((item) => item.type === "photo")) {
-      setLoading(false);
-      setError("Adicione pelo menos uma foto para ser a capa do produto.");
-      return;
-    }
-    if (
-      listingType === "produto" &&
-      !delivery.allow_pickup &&
-      !delivery.allow_seller_delivery &&
-      !delivery.allow_delivery
-    ) {
-      setLoading(false);
-      setError("Escolha pelo menos uma opção de entrega.");
-      return;
-    }
-    if (!categoryId) {
-      setLoading(false);
-      setError("Escolha uma categoria.");
-      return;
-    }
-    if (!street || !city || !stateUf) {
-      setLoading(false);
-      setError("Informe o endereço do anúncio.");
-      return;
-    }
-    if (!addressNumber.trim()) {
-      setLoading(false);
-      setError("Informe o número do endereço — precisamos da localização exata pra calcular a rota de entrega depois.");
-      return;
-    }
-    if (listingType !== "produto" && !contactPhone.trim()) {
-      setLoading(false);
-      setError("Informe um telefone de contato.");
-      return;
-    }
-
-    let orderedMedia = media;
-    if (media.length > 0 && media[0]?.type === "video") {
-      const firstPhotoIndex = media.findIndex((item) => item.type === "photo");
-      if (firstPhotoIndex > 0) {
-        const firstPhoto = media[firstPhotoIndex]!;
-        orderedMedia = [firstPhoto, ...media.filter((_, i) => i !== firstPhotoIndex)];
-      }
-    }
-
-    const priceCents = Math.round(parseFloat(price.replace(",", ".")) * 100);
-
     const { error: updateError } = await updateProduct(supabase, product.id, {
-      title,
-      description,
       price_cents: priceCents,
-      stock: parseInt(stock, 10),
-      listing_type: listingType,
-      contact_phone: listingType !== "produto" ? contactPhone.trim() : null,
-      condition,
-      package_size: packageSize,
-      category_id: categoryId,
-      subcategory_id: subcategoryId || null,
-      allow_pickup: delivery.allow_pickup,
-      allow_seller_delivery: delivery.allow_seller_delivery,
-      allow_delivery: delivery.allow_delivery,
-      street,
-      number: addressNumber.trim() || null,
-      neighborhood,
-      city,
-      state: stateUf,
-      lat,
-      lng,
     });
+    setLoading(false);
 
     if (updateError) {
-      setLoading(false);
       setError(updateError.message);
       return;
     }
 
-    for (const item of deleted) {
-      await deleteProductMedia(supabase, item.id);
-      const path = productMediaPathFromUrl(item.url);
-      if (path) await deleteProductMediaFile(supabase, path);
-    }
-
-    for (const [i, item] of orderedMedia.entries()) {
-      if (item.kind === "existing") {
-        await updateProductMediaPosition(supabase, item.id, i);
-        continue;
-      }
-      setStatus(`Enviando mídia ${i + 1} de ${orderedMedia.length}...`);
-      const path = productMediaStoragePath(user.id, product.id, item.file.name, i);
-      const { url, error: uploadError } = await uploadProductMedia(supabase, path, item.file);
-      if (uploadError || !url) {
-        setError(`Falha ao enviar "${item.file.name}", pulando esse arquivo.`);
-        continue;
-      }
-      await createProductMedia(supabase, [
-        { product_id: product.id, url, type: item.type, position: i },
-      ]);
-    }
-
-    setStatus(null);
-    setLoading(false);
     router.push("/meus-anuncios");
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div>
-        <label className="mb-2 block text-sm font-medium text-foreground">Tipo de anúncio</label>
-        <div className="flex flex-wrap gap-2">
-          {LISTING_TYPES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => handleListingTypeChange(t.value)}
-              className={
-                listingType === t.value
-                  ? "rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground"
-                  : "rounded-full bg-secondary px-3 py-1.5 text-xs text-foreground"
-              }
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
+    <div className="flex flex-col gap-4">
+      <p className="rounded-lg bg-secondary/50 px-3 py-2 text-sm text-muted-foreground">
+        Depois de publicado, o anúncio não pode mais ser editado — só o preço, e só pra baixo. Pra
+        mudar qualquer outra coisa, remova este anúncio e publique um novo.
+      </p>
+
+      <div className="flex gap-3 rounded-xl border border-border p-3">
+        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+          {cover ? (
+            cover.type === "video" ? (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <video src={cover.url} className="h-full w-full object-cover" muted />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={cover.url} alt="" className="h-full w-full object-cover" />
+            )
+          ) : (
+            <span className="text-2xl">📦</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold text-foreground">{product.title}</p>
+          {product.description && (
+            <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
+          )}
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            {listingType === "produto" && (
+              <>
+                <span>Estoque: {product.stock}</span>
+                {product.condition && <span>{PRODUCT_CONDITION_LABEL[product.condition]}</span>}
+                {product.package_size && <span>{PACKAGE_SIZE_LABEL[product.package_size]}</span>}
+              </>
+            )}
+            {listingType !== "produto" && product.contact_phone && (
+              <span>📞 {product.contact_phone}</span>
+            )}
+          </div>
+          {(product.street || product.city) && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              📍 {product.street}
+              {product.number ? `, ${product.number}` : ""}
+              {product.neighborhood ? ` - ${product.neighborhood}` : ""}
+              {product.city ? `, ${product.city}/${product.state}` : ""}
+            </p>
+          )}
         </div>
       </div>
-      <input
-        required
-        placeholder="Título"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      <textarea
-        placeholder={DESCRIPTION_PLACEHOLDER[listingType]}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        rows={4}
-      />
-      <input
-        required
-        placeholder={PRICE_LABEL[listingType]}
-        value={price}
-        onChange={(e) => setPrice(e.target.value)}
-        className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-      />
+
       {listingType === "produto" && (
+        <div className="flex flex-wrap gap-1.5">
+          {DELIVERY_OPTIONS.filter((opt) =>
+            opt.key === "allow_seller_delivery"
+              ? product.allow_seller_delivery === true
+              : product[opt.key] !== false
+          ).map((opt) => (
+            <span
+              key={opt.key}
+              className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs text-foreground"
+            >
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
-          <label className="mb-2 block text-sm font-medium text-foreground">Estoque</label>
-          <input
+          <label className="mb-2 block text-sm font-medium text-foreground">
+            {PRICE_LABEL[listingType]}
+          </label>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Preço atual: {formatPriceCents(originalPriceCents)}
+          </p>
+          <PriceInput
             required
-            type="number"
-            min={0}
-            placeholder="Estoque"
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
+            cents={priceCents}
+            onChange={setPriceCents}
             className="w-full rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-      )}
-      {listingType !== "produto" && (
-        <input
-          required
-          type="tel"
-          placeholder="Telefone para contato (WhatsApp)"
-          value={contactPhone}
-          onChange={(e) => setContactPhone(e.target.value)}
-          className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      )}
 
-      <div>
-        <label className="mb-2 block text-sm font-medium text-foreground">Endereço do anúncio</label>
-        <AddressAutocomplete onSelect={handleSelectAddress} placeholder="Digite o endereço (rua e número)..." />
-        {street && (
-          <div className="mt-2 flex gap-2">
-            <input
-              required
-              type="text"
-              placeholder="Número"
-              value={addressNumber}
-              onChange={(e) => setAddressNumber(e.target.value)}
-              className="w-24 shrink-0 rounded-lg border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="flex items-center text-sm text-muted-foreground">
-              {street}
-              {neighborhood ? ` - ${neighborhood}` : ""}, {city}/{stateUf}
-            </p>
-          </div>
-        )}
-      </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div>
-        <label className="mb-2 block text-sm font-medium text-foreground">
-          Fotos e vídeos — mín. {MIN_MEDIA_ITEMS}, incluindo pelo menos 1 vídeo (até{" "}
-          {MAX_VIDEO_SECONDS}s, estilo stories)
-        </label>
-        <PhotoPickerButton
-          onFilesSelected={handleFilesSelected}
-          count={media.length}
-          max={MAX_MEDIA_ITEMS}
-        />
-      </div>
-
-      {media.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {media.map((item, index) => (
-            <div
-              key={item.kind === "existing" ? item.id : item.previewUrl}
-              ref={setItemRef(index)}
-              role="button"
-              tabIndex={0}
-              onPointerDown={onPointerDown(index)}
-              onClick={() => {
-                if (shouldSuppressClick()) return;
-                if (item.type === "video") setOpenMenuIndex(index);
-                else setEditingIndex(index);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  if (item.type === "video") setOpenMenuIndex(index);
-                  else setEditingIndex(index);
-                }
-              }}
-              style={{ touchAction: "none" }}
-              className={`relative aspect-square cursor-grab select-none active:cursor-grabbing ${
-                dragIndex === index ? "opacity-50" : ""
-              }`}
-            >
-              <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-muted">
-                {item.type === "video" ? (
-                  // eslint-disable-next-line jsx-a11y/media-has-caption
-                  <video src={mediaUrl(item)} className="h-full w-full object-cover" muted />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mediaUrl(item)} alt="" className="h-full w-full object-cover" />
-                )}
-              </div>
-              {index === 0 && (
-                <span className="absolute left-1 top-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-brand-foreground">
-                  Capa
-                </span>
-              )}
-              {item.type === "video" && (
-                <MediaThumbnailMenu
-                  open={openMenuIndex === index}
-                  onRemove={() => removeMedia(index)}
-                  onClose={() => setOpenMenuIndex(null)}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>
-          <select
-            value={categoryId}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full rounded-lg border border-input bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {categories
-              .filter((c) => categoryDomain(c.name) === listingTypeDomain(listingType))
-              .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-2 block text-sm font-medium text-foreground">Subcategoria</label>
-          <select
-            value={subcategoryId}
-            onChange={(e) => setSubcategoryId(e.target.value)}
-            className="w-full rounded-lg border border-input bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {subcategories
-              .filter((s) => s.category_id === categoryId)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-          </select>
-        </div>
-      </div>
-
-      {listingType === "produto" && (
-        <>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Condição</label>
-            <div className="flex flex-wrap gap-2">
-              {PRODUCT_CONDITIONS.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setCondition(c.value)}
-                  className={
-                    condition === c.value
-                      ? "rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground"
-                      : "rounded-full bg-secondary px-3 py-1.5 text-xs text-foreground"
-                  }
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">
-              Tamanho do pacote
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {PACKAGE_SIZES.map((p) => (
-                <button
-                  key={p.value}
-                  type="button"
-                  onClick={() => setPackageSize(p.value)}
-                  className={
-                    packageSize === p.value
-                      ? "rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-brand-foreground"
-                      : "rounded-full bg-secondary px-3 py-1.5 text-xs text-foreground"
-                  }
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border p-3">
-            {DELIVERY_OPTIONS.map((opt) => (
-              <div key={opt.key} className="flex items-center justify-between gap-3 py-2">
-                <span className="text-sm text-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span>{opt.icon}</span>
-                    <span>{opt.label}</span>
-                    {opt.recommended && (
-                      <span className="rounded-full bg-brand/20 px-1.5 py-0.5 text-[10px] font-bold text-brand">
-                        Recomendado
-                      </span>
-                    )}
-                  </span>
-                  <span className="block text-xs text-muted-foreground">{opt.hint}</span>
-                </span>
-                <ToggleSwitch
-                  checked={delivery[opt.key]}
-                  onChange={() => setDelivery((prev) => ({ ...prev, [opt.key]: !prev[opt.key] }))}
-                />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {status && <p className="text-sm text-muted-foreground">{status}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-lg bg-primary px-4 py-2 text-primary-foreground shadow-glow disabled:opacity-50"
-      >
-        {loading ? "Salvando..." : "Salvar alterações"}
-      </button>
-
-      {editingIndex !== null && media[editingIndex] && (
-        <PhotoEditorModal
-          imageUrl={mediaUrl(media[editingIndex]!)}
-          isCover={editingIndex === 0}
-          onCancel={() => setEditingIndex(null)}
-          onSave={(file) => handleEditedMedia(editingIndex, file)}
-          onSetCover={() => setCover(editingIndex)}
-          onRemove={() => removeMedia(editingIndex)}
-        />
-      )}
-    </form>
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-lg bg-primary px-4 py-2 text-primary-foreground shadow-glow disabled:opacity-50"
+        >
+          {loading ? "Salvando..." : "Salvar novo preço"}
+        </button>
+      </form>
+    </div>
   );
 }

@@ -29,6 +29,7 @@ type ProductExtraFields = {
   state?: string | null;
   lat?: number | null;
   lng?: number | null;
+  original_price_cents?: number;
 };
 
 export function listActiveProducts(client: Client) {

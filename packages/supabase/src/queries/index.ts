@@ -6,3 +6,4 @@ export * from "./reviews";
 export * from "./trade-offers";
 export * from "./categories";
 export * from "./stories";
+export * from "./product-comments";

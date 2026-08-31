@@ -36,6 +36,7 @@ import { PhotoPickerButton } from "@/lib/photo-picker-button";
 import { PhotoEditorModal } from "@/lib/photo-editor-modal";
 import { MediaThumbnailMenu } from "@/lib/media-thumbnail-menu";
 import { useDragReorder } from "@/lib/use-drag-reorder";
+import { PriceInput } from "@/lib/price-input";
 
 const MAX_FILE_MB = 50;
 const MAX_VIDEO_SECONDS = 30;
@@ -68,7 +69,7 @@ export default function VenderPage() {
   const [listingType, setListingType] = useState<ListingType>("produto");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
+  const [priceCents, setPriceCents] = useState(0);
   const [stock, setStock] = useState("1");
   const [contactPhone, setContactPhone] = useState("");
   const [condition, setCondition] = useState<ProductCondition>("novo");
@@ -236,8 +237,7 @@ export default function VenderPage() {
   }
 
   function validate(): string | null {
-    const priceCents = Math.round(parseFloat(price.replace(",", ".")) * 100);
-    if (!title.trim() || !price.trim() || Number.isNaN(priceCents)) {
+    if (!title.trim() || !priceCents) {
       return "Preencha título e preço antes de publicar.";
     }
     if (!categoryId) {
@@ -301,7 +301,6 @@ export default function VenderPage() {
     }
 
     const orderedMedia = orderedMediaForSubmit();
-    const priceCents = Math.round(parseFloat(price.replace(",", ".")) * 100);
 
     const { data: product, error: createError } = await createProduct(supabase, {
       seller_id: user.id,
@@ -362,7 +361,7 @@ export default function VenderPage() {
           neighborhood ? ` - ${neighborhood}` : ""
         }, ${city}/${stateUf}`
       : "Endereço não informado";
-  const priceCentsPreview = price ? Math.round(parseFloat(price.replace(",", ".")) * 100) : null;
+  const priceCentsPreview = priceCents || null;
   const activeDeliveryOptions = DELIVERY_OPTIONS.filter((opt) => delivery[opt.key]);
 
   const mediaPickerField = (
@@ -598,11 +597,11 @@ export default function VenderPage() {
         className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         rows={4}
       />
-      <input
+      <PriceInput
         required
         placeholder={PRICE_LABEL[listingType]}
-        value={price}
-        onChange={(e) => setPrice(e.target.value)}
+        cents={priceCents}
+        onChange={setPriceCents}
         className="rounded-lg border border-input bg-secondary px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
       {listingType === "produto" && (

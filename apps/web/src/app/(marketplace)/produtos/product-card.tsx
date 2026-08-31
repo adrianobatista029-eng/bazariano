@@ -28,6 +28,8 @@ export function ProductCard({
   const city = (product as any).city as string | null | undefined;
   const state = (product as any).state as string | null | undefined;
   const locationLabel = city && state ? `${city}/${state}` : city || null;
+  const originalPriceCents = (product as any).original_price_cents as number | undefined;
+  const hasDiscount = !!originalPriceCents && originalPriceCents > product.price_cents;
 
   return (
     <div className="group flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card/30 p-3 shadow-lg backdrop-blur-md transition-all hover:border-brand/50 hover:bg-card/50">
@@ -59,7 +61,14 @@ export function ProductCard({
         <Link href={`/produtos/${product.id}`}>
           <h4 className="mb-1 line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h4>
         </Link>
-        <p className="text-lg font-bold text-brand">{formatPriceCents(product.price_cents)}</p>
+        <p className="flex items-baseline gap-1.5">
+          {hasDiscount && (
+            <span className="text-xs text-muted-foreground line-through">
+              {formatPriceCents(originalPriceCents!)}
+            </span>
+          )}
+          <span className="text-lg font-bold text-brand">{formatPriceCents(product.price_cents)}</span>
+        </p>
         {(locationLabel || product.created_at) && (
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {locationLabel}

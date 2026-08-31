@@ -233,24 +233,6 @@
 .story-ring.is-publishing {
   filter: drop-shadow(0 0 7px var(--story-glow));
 }
-.story-ring[data-pulse="true"] {
-  animation: story-ring-pulse 2.6s ease-in-out infinite;
-}
-.story-ring[data-shimmer="true"]::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 9999px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 320deg,
-    rgba(255, 255, 255, 0.9) 335deg,
-    transparent 350deg
-  );
-  animation: story-shimmer-orbit 3.4s linear infinite;
-  mix-blend-mode: screen;
-}
 .story-ring.is-publishing {
   animation: story-publish-pop 0.85s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -258,20 +240,6 @@
 @keyframes story-ring-spin {
   to {
     transform: rotate(360deg);
-  }
-}
-@keyframes story-shimmer-orbit {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes story-ring-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.035);
   }
 }
 @keyframes story-publish-pop {
@@ -331,8 +299,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .story-ring::before,
-  .story-ring[data-pulse="true"],
-  .story-ring[data-shimmer="true"]::after,
   .story-ring.is-publishing {
     animation: none !important;
   }

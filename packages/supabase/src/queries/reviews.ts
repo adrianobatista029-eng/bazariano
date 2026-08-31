@@ -37,18 +37,11 @@ export async function getSellerPublicStats(client: Client, sellerId: string) {
   return { data: data as SellerStats | null, error };
 }
 
-export async function getCourierPublicStats(client: Client, courierId: string) {
-  const { data, error } = await (client.rpc as any)("get_courier_public_stats", {
-    p_courier_id: courierId,
+export async function getBuyerPublicStats(client: Client, buyerId: string) {
+  const { data, error } = await (client.rpc as any)("get_buyer_public_stats", {
+    p_buyer_id: buyerId,
   }).single();
-  return { data: data as CourierStats | null, error };
-}
-
-export async function getProductPublicStats(client: Client, productId: string) {
-  const { data, error } = await (client.rpc as any)("get_product_public_stats", {
-    p_product_id: productId,
-  }).single();
-  return { data: data as ProductStats | null, error };
+  return { data: data as BuyerStats | null, error };
 }
 
 export type SellerStats = {
@@ -58,14 +51,8 @@ export type SellerStats = {
   top_tags: string[];
 };
 
-export type CourierStats = {
-  completed_deliveries: number;
-  avg_rating: number;
-  total_reviews: number;
-  top_tags: string[];
-};
-
-export type ProductStats = {
+export type BuyerStats = {
+  completed_orders: number;
   avg_rating: number;
   total_reviews: number;
   top_tags: string[];

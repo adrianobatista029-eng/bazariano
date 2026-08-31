@@ -70,19 +70,6 @@ export function ReviewForm({
         title: REVIEW_TARGET_LABEL.courier,
       });
     }
-    const seenProducts = new Set<string>();
-    for (const item of order.order_items) {
-      if (!item.products || seenProducts.has(item.product_id)) continue;
-      seenProducts.add(item.product_id);
-      if (alreadyReviewed.has(`product:${item.product_id}`)) continue;
-      blocks.push({
-        key: `product:${item.product_id}`,
-        target: "product",
-        revieweeId: null,
-        productId: item.product_id,
-        title: item.products.title,
-      });
-    }
   } else {
     if (!alreadyReviewed.has("buyer")) {
       blocks.push({

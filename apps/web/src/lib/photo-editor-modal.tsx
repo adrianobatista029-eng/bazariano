@@ -198,6 +198,10 @@ export function PhotoEditorModal({
     if (!canvas || index < 0 || index >= h.stack.length || !json) return;
     h.silent = true;
     await canvas.loadFromJSON(json);
+    // Sem isso, desfazer pra um estado sem moldura deixa frameRef apontando
+    // pro Rect antigo (já fora do canvas) — a próxima aplicação de moldura
+    // tentaria remover um objeto que não existe mais.
+    frameRef.current = null;
     canvas.getObjects().forEach((obj) => {
       if ((obj as FabricImage).type === "image") imageRef.current = obj as FabricImage;
       if ((obj as any)._isFrame) frameRef.current = obj as Rect;

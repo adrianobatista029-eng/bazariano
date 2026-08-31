@@ -140,14 +140,18 @@ export function StoryViewer({
   async function handleDelete() {
     if (!story || deleting) return;
     setDeleting(true);
-    await deleteStoryWithMedia(createClient(), { id: story.id, media_url: story.media_url });
+    const { error } = await deleteStoryWithMedia(createClient(), {
+      id: story.id,
+      media_url: story.media_url,
+    });
+    setDeleting(false);
+    if (error) return;
     setLocalGroups((prev) => {
       const next = prev.map((g, i) =>
         i === groupIndex ? { ...g, stories: g.stories.filter((_, si) => si !== storyIndex) } : g
       );
       return next;
     });
-    setDeleting(false);
     router.refresh();
     // Reavalia posição: se acabaram as stories desse vendedor, pula pro
     // próximo grupo; senão fica no mesmo índice (que agora é a próxima story).

@@ -29,11 +29,7 @@ export function ReviewButton({
 
   const hasPending =
     perspective === "buyer"
-      ? !alreadyReviewed.has("seller") ||
-        (!!order.courier_id && !alreadyReviewed.has("courier")) ||
-        order.order_items.some(
-          (i) => i.products && !alreadyReviewed.has(`product:${i.product_id}`)
-        )
+      ? !alreadyReviewed.has("seller") || (!!order.courier_id && !alreadyReviewed.has("courier"))
       : !alreadyReviewed.has("buyer") || (!!order.courier_id && !alreadyReviewed.has("courier"));
 
   if (!hasPending) {

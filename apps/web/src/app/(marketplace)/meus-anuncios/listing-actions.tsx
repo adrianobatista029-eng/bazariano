@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateProduct, deleteProductCompletely } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
+import { ConfirmDialog } from "@/lib/confirm-dialog";
 
 type Dialog = { kind: "confirm" } | { kind: "info"; message: string } | null;
 
@@ -49,53 +50,35 @@ export function ListingActions({
     router.refresh();
   }
 
-  const dialogOverlay = dialog && (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4"
-      onClick={() => setDialog(null)}
-    >
+  const dialogOverlay =
+    dialog &&
+    (dialog.kind === "confirm" ? (
+      <ConfirmDialog
+        title="Apagar anúncio?"
+        message="Essa ação é definitiva e não pode ser desfeita."
+        loading={loading}
+        onConfirm={confirmDelete}
+        onCancel={() => setDialog(null)}
+      />
+    ) : (
       <div
-        className="w-full max-w-sm rounded-2xl bg-card p-5 text-center shadow-elevated"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4"
+        onClick={() => setDialog(null)}
       >
-        {dialog.kind === "confirm" ? (
-          <>
-            <p className="text-2xl">🗑️</p>
-            <h3 className="mt-2 text-base font-bold text-foreground">Apagar anúncio?</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Essa ação é definitiva e não pode ser desfeita.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => setDialog(null)}
-                disabled={loading}
-                className="flex-1 rounded-xl bg-secondary py-2.5 text-sm font-medium text-foreground disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={loading}
-                className="flex-1 rounded-xl bg-destructive py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? "Apagando..." : "Apagar"}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-foreground">{dialog.message}</p>
-            <button
-              onClick={() => setDialog(null)}
-              className="mt-4 w-full rounded-xl bg-secondary py-2.5 text-sm font-medium text-foreground"
-            >
-              Entendi
-            </button>
-          </>
-        )}
+        <div
+          className="w-full max-w-sm rounded-2xl bg-card p-5 text-center shadow-elevated"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-sm text-foreground">{dialog.message}</p>
+          <button
+            onClick={() => setDialog(null)}
+            className="mt-4 w-full rounded-xl bg-secondary py-2.5 text-sm font-medium text-foreground"
+          >
+            Entendi
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    ));
 
   if (status === "removed") {
     return (

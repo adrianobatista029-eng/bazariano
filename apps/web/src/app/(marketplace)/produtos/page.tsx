@@ -1,10 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import {
-  listActiveStories,
-  listProductsBySeller,
-  type StoryContentType,
-} from "@marketplace/supabase/queries";
+import { listActiveStories, listProductsBySeller } from "@marketplace/supabase/queries";
 import { StoriesTray, type StoryGroup } from "./stories-tray";
 import { NearbyProductGrid } from "./nearby-product-grid";
 
@@ -14,7 +10,6 @@ type StoryRow = {
   product_id: string;
   media_url: string;
   media_type: "photo" | "video";
-  story_type: StoryContentType;
   created_at: string;
   products: {
     id: string;
@@ -70,7 +65,6 @@ export default async function ProdutosPage({
       id: s.id,
       media_url: s.media_url,
       media_type: s.media_type,
-      story_type: s.story_type,
       created_at: s.created_at,
       product_id: s.product_id,
       products: s.products,

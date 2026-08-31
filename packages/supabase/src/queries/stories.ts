@@ -4,15 +4,14 @@ import type { Database } from "../database.types";
 type Client = SupabaseClient<Database>;
 
 export type StoryMediaType = "photo" | "video";
-export type StoryContentType = "produto" | "video" | "promocao" | "entrega" | "local";
 
-// TODO: remover os `as any` depois de rodar `supabase gen types` com as
-// migrations 0019_stories.sql e 0022_story_type.sql aplicadas.
+// TODO: remover os `as any` depois de rodar `supabase gen types` com a
+// migration 0019_stories.sql aplicada.
 
 export function listActiveStories(client: Client) {
   return (client.from as any)("stories")
     .select(
-      "id, seller_id, product_id, media_url, media_type, story_type, created_at, products(id, title, price_cents, listing_type, status), profiles(id, full_name, avatar_url)"
+      "id, seller_id, product_id, media_url, media_type, created_at, products(id, title, price_cents, listing_type, status), profiles(id, full_name, avatar_url)"
     )
     .order("created_at", { ascending: true });
 }
@@ -24,7 +23,6 @@ export function createStory(
     product_id: string;
     media_url: string;
     media_type: StoryMediaType;
-    story_type: StoryContentType;
   }
 ) {
   return (client.from as any)("stories").insert(story).select().single();

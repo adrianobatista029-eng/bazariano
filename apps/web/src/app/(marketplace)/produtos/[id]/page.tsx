@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProductById, listProductsBySeller } from "@marketplace/supabase/queries";
+import { getProductById, listProductsBySeller, listProductComments } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 import { formatPriceCents } from "@/lib/format";
 import { PRODUCT_CONDITION_LABEL } from "@/lib/product-condition";
@@ -10,6 +10,7 @@ import { AddToCartButton } from "./add-to-cart-button";
 import { ProductGallery } from "./product-gallery";
 import { SellerBadge } from "./seller-badge";
 import { TradeOfferButton } from "./trade-offer-button";
+import { ProductComments } from "./product-comments";
 import { NearbyProductGrid } from "../nearby-product-grid";
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
@@ -27,40 +28,6 @@ export default async function ProductPage({ params }: { params: { id: string } }
   const listingType = productExtra.listing_type ?? "produto";
   const isProduto = listingType === "produto";
 
-  let categoryName: string | null = null;
-  let subcategoryName: string | null = null;
-  if (productExtra.category_id) {
-    const { data: cat } = await (supabase.from as any)("categories")
-      .select("name")
-      .eq("id", productExtra.category_id)
-      .single();
-    categoryName = cat?.name ?? null;
-  }
-  if (productExtra.subcategory_id) {
-    const { data: sub } = await (supabase.from as any)("subcategories")
-      .select("name")
-      .eq("id", productExtra.subcategory_id)
-      .single();
-    subcategoryName = sub?.name ?? null;
-  }
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isOwnProduct = user?.id === product.seller_id;
-
-  const { data: sellerProfile } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url, created_at")
-    .eq("id", product.seller_id)
-    .single();
-
-  let myActiveProducts: { id: string; title: string; price_cents: number }[] = [];
-  if (user && !isOwnProduct) {
-    const { data } = await listProductsBySeller(supabase, user.id);
-    myActiveProducts = (data ?? []).filter((p) => p.status === "active");
-  }
-
   let otherProductsQuery = supabase
     .from("products")
     .select("*, product_media(*)")
@@ -74,7 +41,43 @@ export default async function ProductPage({ params }: { params: { id: string } }
     // migration 0012_categories.sql aplicada.
     otherProductsQuery = (otherProductsQuery as any).eq("category_id", productExtra.category_id);
   }
-  const { data: otherProducts } = await otherProductsQuery;
+
+  // Nenhuma dessas consultas depende do resultado das outras — rodam em
+  // paralelo em vez de uma esperar a outra terminar.
+  const [
+    { data: cat },
+    { data: sub },
+    {
+      data: { user },
+    },
+    { data: sellerProfile },
+    { data: otherProducts },
+    { data: commentsData },
+  ] = await Promise.all([
+    productExtra.category_id
+      ? (supabase.from as any)("categories").select("name").eq("id", productExtra.category_id).single()
+      : Promise.resolve({ data: null }),
+    productExtra.subcategory_id
+      ? (supabase.from as any)("subcategories")
+          .select("name")
+          .eq("id", productExtra.subcategory_id)
+          .single()
+      : Promise.resolve({ data: null }),
+    supabase.auth.getUser(),
+    supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", product.seller_id).single(),
+    otherProductsQuery,
+    listProductComments(supabase, product.id),
+  ]);
+  const categoryName: string | null = cat?.name ?? null;
+  const subcategoryName: string | null = sub?.name ?? null;
+  const isOwnProduct = user?.id === product.seller_id;
+  const comments = (commentsData ?? []) as any;
+
+  let myActiveProducts: { id: string; title: string; price_cents: number }[] = [];
+  if (user && !isOwnProduct) {
+    const { data } = await listProductsBySeller(supabase, user.id);
+    myActiveProducts = (data ?? []).filter((p) => p.status === "active");
+  }
 
   return (
     <div className="flex flex-col gap-10">
@@ -82,7 +85,12 @@ export default async function ProductPage({ params }: { params: { id: string } }
         <ProductGallery media={product.product_media} title={product.title} />
         <div>
           <h1 className="font-display text-2xl font-semibold text-foreground">{product.title}</h1>
-          <p className="mt-2 text-2xl font-bold text-brand">
+          {productExtra.original_price_cents > product.price_cents && (
+            <p className="mt-2 text-sm text-muted-foreground line-through">
+              {formatPriceCents(productExtra.original_price_cents)}
+            </p>
+          )}
+          <p className="mt-0.5 text-2xl font-bold text-brand">
             {formatPriceCents(product.price_cents)}
             <span className="text-sm font-normal text-muted-foreground">
               {PRICE_DISPLAY_SUFFIX[listingType as keyof typeof PRICE_DISPLAY_SUFFIX]}
@@ -178,6 +186,13 @@ export default async function ProductPage({ params }: { params: { id: string } }
           </div>
         </div>
       </div>
+
+      <ProductComments
+        productId={product.id}
+        comments={comments}
+        currentUserId={user?.id ?? null}
+        isOwnProduct={isOwnProduct}
+      />
 
       {otherProducts && otherProducts.length > 0 && (
         <section>

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import type { StoryContentType } from "@marketplace/supabase/queries";
 import { CreateStoryModal, JUST_PUBLISHED_STORY_KEY } from "./create-story-modal";
 import { StoryViewer } from "./story-viewer";
 import { StoryRing } from "./story-ring";
@@ -11,7 +10,6 @@ export type StoryWithProduct = {
   id: string;
   media_url: string;
   media_type: "photo" | "video";
-  story_type: StoryContentType;
   created_at: string;
   product_id: string;
   products: {
@@ -110,7 +108,6 @@ export function StoriesTray({
 
         {orderedGroups.map((group) => {
           const isNew = !seenIds || group.stories.some((s) => !seenIds.has(s.id));
-          const headStoryType = group.stories[0]?.story_type;
           const isPublishing = group.stories.some((s) => s.id === justPublishedId);
           return (
             <button
@@ -118,11 +115,7 @@ export function StoriesTray({
               onClick={() => setViewerGroupIndex(storyGroups.indexOf(group))}
               className="flex shrink-0 flex-col items-center gap-1"
             >
-              <StoryRing
-                state={isNew ? "new" : "viewed"}
-                storyType={headStoryType}
-                publishing={isPublishing}
-              >
+              <StoryRing state={isNew ? "new" : "viewed"} publishing={isPublishing}>
                 {group.seller.avatar_url ? (
                   <Image
                     src={group.seller.avatar_url}
