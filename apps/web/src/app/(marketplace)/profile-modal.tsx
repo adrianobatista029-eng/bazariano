@@ -127,7 +127,8 @@ export function ProfileModal({
             aria-label="Fechar"
             className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
           >
-            ✕
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/letra-x.png" alt="" className="h-4 w-4" />
           </button>
         </div>
 
@@ -185,7 +186,8 @@ export function ProfileModal({
                   onClick={() => setEditingName(false)}
                   className="rounded-lg bg-secondary px-2 py-1.5 text-xs text-foreground"
                 >
-                  ✕
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/letra-x.png" alt="" className="h-3.5 w-3.5" />
                 </button>
               </div>
             ) : null}
@@ -248,8 +250,12 @@ export function ProfileModal({
               <button
                 onClick={handleDeleteAccount}
                 disabled={deletingAccount}
-                className="flex-1 rounded-lg bg-destructive py-2 text-xs font-semibold text-white disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive py-2 text-xs font-semibold text-white disabled:opacity-50"
               >
+                {!deletingAccount && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/apagar-mensagem.png" alt="" className="h-5 w-5" />
+                )}
                 {deletingAccount ? "Apagando..." : "Sim, apagar minha conta"}
               </button>
               <button

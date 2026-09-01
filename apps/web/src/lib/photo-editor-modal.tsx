@@ -751,8 +751,10 @@ export function PhotoEditorModal({
                   onRemove();
                   onCancel();
                 }}
-                className="rounded-lg px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/apagar-mensagem.png" alt="" className="h-6 w-6" />
                 Remover
               </button>
             )}
@@ -1044,8 +1046,10 @@ export function PhotoEditorModal({
                   <button
                     type="button"
                     onClick={deleteSelected}
-                    className="w-full rounded-lg bg-red-500/20 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/30"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-500/20 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/30"
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/apagar-mensagem.png" alt="" className="h-6 w-6" />
                     Excluir selecionado
                   </button>
                 )}
@@ -1076,8 +1080,10 @@ export function PhotoEditorModal({
                   <button
                     type="button"
                     onClick={deleteSelected}
-                    className="w-full rounded-lg bg-red-500/20 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/30"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-500/20 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/30"
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/apagar-mensagem.png" alt="" className="h-6 w-6" />
                     Excluir selecionado
                   </button>
                 )}

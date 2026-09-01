@@ -31,6 +31,7 @@ export function StoryViewer({
   const [deleting, setDeleting] = useState(false);
   const [videoDurationMs, setVideoDurationMs] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState(false);
   const remainingMsRef = useRef(PHOTO_DURATION_MS);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -65,6 +66,12 @@ export function StoryViewer({
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowRight") moveStory(storyIndex + 1);
       if (e.key === "ArrowLeft") moveStory(storyIndex - 1);
+      // Espaço pra pausar/continuar — equivalente no teclado ao "segurar
+      // pra pausar" do touch, já que segurar o mouse não é tão natural no PC.
+      if (e.key === " ") {
+        e.preventDefault();
+        setPaused((v) => !v);
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -95,9 +102,21 @@ export function StoryViewer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (paused) video.pause();
-    else video.play().catch(() => {});
-  }, [paused]);
+    if (paused) {
+      video.pause();
+      return;
+    }
+    video.play().catch(() => {
+      // Alguns navegadores bloqueiam autoplay com som — tenta de novo mudo
+      // (melhor tocar sem áudio do que não tocar nada) e mostra o ícone de
+      // "sem som" pro usuário poder ativar com um clique.
+      if (!video.muted) {
+        setMuted(true);
+        video.muted = true;
+        video.play().catch(() => {});
+      }
+    });
+  }, [paused, story?.id]);
 
   // A duração real do vídeo só é conhecida depois que o metadata carrega —
   // até lá a barrinha desse segmento fica parada em vez de "chutar" um valor.
@@ -180,9 +199,12 @@ export function StoryViewer({
         `}</style>
         <div className="absolute inset-x-4 top-3 z-20 flex gap-1">
           {group.stories.map((s, i) => (
-            <div key={`${s.id}-${i}`} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/30">
+            <div
+              key={`${s.id}-${i}`}
+              className="h-0.5 flex-1 overflow-hidden rounded-full bg-foreground/25 shadow-[0_0_0_1px_rgba(255,255,255,0.4)]"
+            >
               <div
-                className="h-full rounded-full bg-white"
+                className="h-full rounded-full bg-foreground shadow-[0_0_3px_rgba(255,255,255,0.9)]"
                 style={
                   i < storyIndex
                     ? { width: "100%" }
@@ -201,7 +223,7 @@ export function StoryViewer({
         </div>
 
         <div
-          className={`relative h-full flex-1 overflow-hidden rounded-3xl bg-black transition-transform ${paused ? "scale-[0.97]" : ""}`}
+          className={`relative h-full flex-1 overflow-hidden rounded-3xl bg-card transition-transform ${paused ? "scale-[0.97]" : ""}`}
         >
           {story.media_type === "video" ? (
             <video
@@ -210,7 +232,7 @@ export function StoryViewer({
               src={story.media_url}
               className="h-full w-full object-contain"
               autoPlay
-              muted
+              muted={muted}
               playsInline
               onLoadedMetadata={(e) => setVideoDurationMs(e.currentTarget.duration * 1000)}
               onEnded={() => moveStory(storyIndex + 1)}
@@ -237,11 +259,17 @@ export function StoryViewer({
             onPointerUp={() => handlePressEnd(1)}
             onPointerLeave={() => handlePressEnd(0)}
           />
-          {paused && (
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-4xl opacity-90">
-              ⏸️
-            </span>
-          )}
+          {/* Meio do vídeo: segurar (mouse ou touch) pausa igual no celular,
+              soltar retoma — sem navegar, já que aqui não é lateral. */}
+          <div
+            className="absolute left-1/3 top-0 h-full w-1/3 select-none"
+            role="button"
+            tabIndex={-1}
+            aria-label={paused ? "Continuar" : "Pausar"}
+            onPointerDown={handlePressStart}
+            onPointerUp={() => handlePressEnd(0)}
+            onPointerLeave={() => handlePressEnd(0)}
+          />
         </div>
 
         <div className="pointer-events-none absolute inset-x-0 top-8 z-20 flex items-center justify-between px-4">
@@ -249,6 +277,23 @@ export function StoryViewer({
             {group.seller.full_name ?? "Vendedor"}
           </span>
           <div className="pointer-events-auto flex items-center gap-2">
+            {story.media_type === "video" && (
+              <button
+                onClick={() => setMuted((v) => !v)}
+                aria-label={muted ? "Ativar som" : "Silenciar"}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white"
+              >
+                {muted ? "🔇" : "🔊"}
+              </button>
+            )}
+            <button
+              onClick={() => setPaused((v) => !v)}
+              aria-label={paused ? "Continuar" : "Pausar"}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={paused ? "/video.png" : "/video-pause.svg"} alt="" className="h-6 w-6" />
+            </button>
             {isOwnStory && (
               <button
                 onClick={handleDelete}
@@ -256,7 +301,8 @@ export function StoryViewer({
                 aria-label="Apagar story"
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white disabled:opacity-50"
               >
-                🗑️
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/apagar-mensagem.png" alt="" className="h-5 w-5" />
               </button>
             )}
             <button
@@ -264,7 +310,8 @@ export function StoryViewer({
               aria-label="Fechar"
               className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white"
             >
-              ✕
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/letra-x.png" alt="" className="h-4 w-4" />
             </button>
           </div>
         </div>

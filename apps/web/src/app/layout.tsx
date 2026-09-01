@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RegisterServiceWorker } from "@/lib/register-service-worker";
+import { UpdatePrompt } from "@/lib/update-prompt";
 
 export const metadata: Metadata = {
   title: "AllRotaHub",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <RegisterServiceWorker />
+        <UpdatePrompt />
         {children}
       </body>
     </html>

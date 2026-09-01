@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Image as ImageIcon, Video, Type, Camera, Sparkles, ArrowLeft } from "lucide-react";
+import { Image as ImageIcon, Video, Type, Camera, Sparkles, ArrowLeft, SwitchCamera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createStory, storyStoragePath, uploadStoryMedia } from "@marketplace/supabase/queries";
 import { upscaleToFullHdIfNeeded } from "@/lib/image-resize";
@@ -422,6 +422,8 @@ export function CreateStoryModal({
   const [error, setError] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -438,6 +440,13 @@ export function CreateStoryModal({
   // Some ao fechar o modal (troca de tela, cancelar, etc.) pra não deixar a
   // câmera ligada em segundo plano.
   useEffect(() => stopCamera, []);
+
+  // Botão de virar câmera só faz sentido em celular (frontal/traseira) — no
+  // PC a webcam não tem essa troca, então usa "pointer: coarse" (touch como
+  // entrada principal) em vez de user-agent pra decidir se mostra o botão.
+  useEffect(() => {
+    setIsMobileDevice(window.matchMedia("(pointer: coarse)").matches);
+  }, []);
 
   function switchTab(next: StoryTabType) {
     stopCamera();
@@ -456,7 +465,7 @@ export function CreateStoryModal({
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: { facingMode },
         audio:
           tab === "video"
             ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
@@ -466,6 +475,26 @@ export function CreateStoryModal({
       setCameraOpen(true);
     } catch {
       setError("Não foi possível acessar a câmera — verifique a permissão no navegador.");
+    }
+  }
+
+  async function flipCamera() {
+    const next = facingMode === "environment" ? "user" : "environment";
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: next },
+        audio:
+          tab === "video"
+            ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+            : false,
+      });
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = stream;
+      setFacingMode(next);
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch {
+      setError("Não foi possível trocar de câmera.");
     }
   }
 
@@ -529,17 +558,17 @@ export function CreateStoryModal({
         onClick={onClose}
       >
         <div
-          className="w-full max-w-sm rounded-[28px] border border-white/10 bg-[#0d0d0f] p-6 text-center shadow-2xl"
+          className="w-full max-w-sm rounded-[28px] border border-border bg-card p-6 text-center shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="text-white">Você precisa ter um anúncio ativo pra postar um story.</p>
+          <p className="text-foreground">Você precisa ter um anúncio ativo pra postar um story.</p>
           <a
             href="/vender"
             className="mt-4 inline-block rounded-full bg-gradient-to-r from-brand to-primary px-5 py-2 text-sm font-bold text-primary-foreground shadow-glow"
           >
             Anunciar agora
           </a>
-          <button onClick={onClose} className="mt-3 block w-full text-sm text-zinc-400">
+          <button onClick={onClose} className="mt-3 block w-full text-sm text-muted-foreground">
             Fechar
           </button>
         </div>
@@ -669,14 +698,14 @@ export function CreateStoryModal({
       }}
     >
       <div
-        className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-[32px] border border-white/10 bg-[#0d0d0f] shadow-2xl"
+        className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-[32px] border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
         <div className="flex items-center justify-between px-6 pt-6">
           <div>
-            <h2 className="text-2xl font-bold text-white">Criar Story</h2>
-            <p className="mt-1 flex items-center gap-1 text-sm text-zinc-400">
+            <h2 className="text-2xl font-bold text-foreground">Criar Story</h2>
+            <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
               <Sparkles size={14} className="text-brand" />
               Compartilhe algo incrível
             </p>
@@ -687,9 +716,10 @@ export function CreateStoryModal({
               onClose();
             }}
             aria-label="Fechar"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-zinc-300 transition hover:bg-white/10 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-muted-foreground transition hover:bg-secondary/80 hover:text-foreground"
           >
-            <X size={22} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/letra-x.png" alt="" className="h-5 w-5" />
           </button>
         </div>
 
@@ -698,7 +728,7 @@ export function CreateStoryModal({
           <select
             value={productId}
             onChange={(e) => setProductId(e.target.value)}
-            className="w-full rounded-2xl border border-white/5 bg-[#151519] px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-2xl border border-border bg-secondary px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {myActiveProducts.map((p) => (
               <option key={p.id} value={p.id}>
@@ -709,7 +739,7 @@ export function CreateStoryModal({
         </div>
 
         {/* TIPO DO STORY */}
-        <div className="mx-6 mt-4 flex gap-2 rounded-2xl bg-[#151519] p-1.5">
+        <div className="mx-6 mt-4 flex gap-2 rounded-2xl bg-secondary p-1.5">
           <StoryTab active={tab === "photo"} icon={<ImageIcon size={18} />} label="Foto" onClick={() => switchTab("photo")} />
           <StoryTab active={tab === "video"} icon={<Video size={18} />} label="Vídeo" onClick={() => switchTab("video")} />
           <StoryTab active={tab === "texto"} icon={<Type size={18} />} label="Texto" onClick={() => switchTab("texto")} />
@@ -719,7 +749,7 @@ export function CreateStoryModal({
         <div className="mx-6 mt-5">
           <div
             ref={previewRef}
-            className="relative aspect-[9/12] overflow-hidden rounded-[26px] border border-white/10 bg-[#18181c]"
+            className="relative aspect-[9/12] overflow-hidden rounded-[26px] border border-border bg-secondary"
           >
             {tab === "texto" ? (
               <div className="relative h-full w-full" style={{ background: backgroundCss(selectedBg) }}>
@@ -756,6 +786,16 @@ export function CreateStoryModal({
                     className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md"
                   >
                     <ArrowLeft size={20} />
+                  </button>
+                )}
+                {!recording && isMobileDevice && (
+                  <button
+                    type="button"
+                    onClick={flipCamera}
+                    aria-label="Virar câmera"
+                    className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md"
+                  >
+                    <SwitchCamera size={20} />
                   </button>
                 )}
                 <div className="absolute inset-x-0 bottom-4 flex items-center justify-center px-4">
@@ -813,7 +853,8 @@ export function CreateStoryModal({
                   aria-label="Trocar mídia"
                   className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md"
                 >
-                  <X size={18} />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/letra-x.png" alt="" className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
@@ -848,21 +889,21 @@ export function CreateStoryModal({
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-brand to-primary shadow-glow">
                   {tab === "video" ? <Video size={34} className="text-white" /> : <ImageIcon size={34} className="text-white" />}
                 </div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-semibold text-foreground">
                   {tab === "video" ? "Adicionar vídeo" : "Adicionar foto"}
                 </h3>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={openCamera}
-                    className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
+                    className="flex items-center gap-1.5 rounded-full bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-brand hover:text-brand-foreground"
                   >
                     <Camera size={16} /> Câmera
                   </button>
                   <button
                     type="button"
                     onClick={() => galleryInputRef.current?.click()}
-                    className="flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
+                    className="flex items-center gap-1.5 rounded-full bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-brand hover:text-brand-foreground"
                   >
                     <ImageIcon size={16} /> Galeria
                   </button>
@@ -876,7 +917,7 @@ export function CreateStoryModal({
           <div className="mx-6 mt-4 flex flex-col gap-3">
             {tab === "texto" && (
               <div>
-                <p className="mb-1.5 text-xs font-medium text-zinc-400">Fundo</p>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Fundo</p>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {BACKGROUND_PRESETS.map((bg) => (
                     <button
@@ -886,7 +927,7 @@ export function CreateStoryModal({
                       aria-label={bg.label}
                       title={bg.label}
                       className={`h-8 w-8 shrink-0 rounded-full border-2 transition ${
-                        bgId === bg.id ? "border-white" : "border-transparent"
+                        bgId === bg.id ? "border-foreground" : "border-transparent"
                       }`}
                       style={{ background: backgroundCss(bg) }}
                     />
@@ -896,7 +937,7 @@ export function CreateStoryModal({
             )}
 
             <div>
-              <p className="mb-1.5 text-xs font-medium text-zinc-400">Texto</p>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">Texto</p>
               <div className="flex flex-wrap items-center gap-2">
                 {TEXT_COLORS.map((c) => (
                   <button
@@ -905,7 +946,7 @@ export function CreateStoryModal({
                     onClick={() => setTextColor(c)}
                     aria-label={`Cor ${c}`}
                     className={`h-7 w-7 shrink-0 rounded-full border-2 transition ${
-                      textColor === c ? "border-brand" : "border-white/20"
+                      textColor === c ? "border-brand" : "border-border"
                     }`}
                     style={{ background: c }}
                   />
@@ -915,7 +956,7 @@ export function CreateStoryModal({
                   onClick={() => setBold((v) => !v)}
                   aria-label="Negrito"
                   className={`flex h-7 items-center justify-center rounded-full px-3 text-xs font-extrabold transition ${
-                    bold ? "bg-white text-black" : "bg-white/10 text-white"
+                    bold ? "bg-foreground text-background" : "bg-secondary text-foreground"
                   }`}
                 >
                   B
@@ -924,7 +965,7 @@ export function CreateStoryModal({
                   type="button"
                   onClick={() => setShadow((v) => !v)}
                   className={`flex h-7 items-center justify-center rounded-full px-3 text-xs font-medium transition ${
-                    shadow ? "bg-white text-black" : "bg-white/10 text-white"
+                    shadow ? "bg-foreground text-background" : "bg-secondary text-foreground"
                   }`}
                 >
                   Sombra
@@ -939,7 +980,7 @@ export function CreateStoryModal({
                     className={`rounded-full px-3 py-1.5 text-xs transition ${
                       fontId === f.id
                         ? "bg-gradient-to-r from-brand to-primary text-primary-foreground"
-                        : "bg-white/10 text-zinc-300"
+                        : "bg-secondary text-muted-foreground"
                     }`}
                     style={{ fontFamily: f.family, fontStyle: f.italic ? "italic" : "normal" }}
                   >
@@ -948,7 +989,7 @@ export function CreateStoryModal({
                 ))}
               </div>
               <div className="mt-3">
-                <p className="mb-1 text-xs font-medium text-zinc-400">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">
                   Tamanho — arraste o texto pra mover; no celular, belisque com dois dedos pra
                   aumentar. No computador, use o controle abaixo.
                 </p>
@@ -974,7 +1015,7 @@ export function CreateStoryModal({
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
 
-        {error && <p className="mx-6 mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mx-6 mt-3 text-sm text-destructive">{error}</p>}
 
         {/* AÇÕES */}
         <div className="flex gap-2 p-6">
@@ -983,7 +1024,7 @@ export function CreateStoryModal({
               stopCamera();
               onClose();
             }}
-            className="rounded-2xl bg-white/5 px-5 py-3 text-sm font-medium text-zinc-300 hover:bg-white/10"
+            className="rounded-2xl bg-secondary px-5 py-3 text-sm font-medium text-muted-foreground hover:bg-secondary/80"
           >
             Cancelar
           </button>
@@ -1018,7 +1059,7 @@ function StoryTab({
       className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition ${
         active
           ? "bg-gradient-to-r from-brand to-primary text-primary-foreground shadow-lg"
-          : "text-zinc-400 hover:text-white"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}

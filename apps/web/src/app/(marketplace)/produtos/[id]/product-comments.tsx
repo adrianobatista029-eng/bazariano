@@ -162,14 +162,15 @@ export function ProductComments({
                         <button
                           onClick={() => setDeleteTarget(c.id)}
                           aria-label="Apagar comentário"
-                          className="text-[11px] text-muted-foreground hover:text-destructive"
+                          className="text-muted-foreground hover:opacity-75"
                         >
-                          ✕
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/apagar-mensagem.png" alt="" className="h-5 w-5" />
                         </button>
                       )}
                     </div>
                   </div>
-                  <p className="mt-0.5 text-sm text-foreground">{c.body}</p>
+                  <p className="mt-0.5 select-text text-sm text-foreground">{c.body}</p>
                 </div>
               </div>
             );

@@ -179,7 +179,8 @@ export function MarketplaceShell({
                 aria-label="Fechar menu"
                 className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                ✕
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/letra-x.png" alt="" className="h-4 w-4" />
               </button>
             </div>
             {sidebarContent}
@@ -296,7 +297,8 @@ export function MarketplaceShell({
               aria-label="Dispensar"
               className="text-muted-foreground hover:text-foreground"
             >
-              ✕
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/letra-x.png" alt="" className="h-3.5 w-3.5" />
             </span>
           </button>
         )}

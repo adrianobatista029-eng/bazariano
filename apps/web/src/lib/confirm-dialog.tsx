@@ -3,7 +3,6 @@
 // Card de confirmação com a cara do app (usado no lugar do confirm() nativo
 // do navegador) — mesmo visual reaproveitado em qualquer "apagar X?".
 export function ConfirmDialog({
-  icon = "🗑️",
   title,
   message,
   confirmLabel = "Apagar",
@@ -11,7 +10,6 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: {
-  icon?: string;
   title: string;
   message: string;
   confirmLabel?: string;
@@ -28,7 +26,8 @@ export function ConfirmDialog({
         className="w-full max-w-sm rounded-2xl bg-card p-5 text-center shadow-elevated"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-2xl">{icon}</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/apagar-mensagem.png" alt="" className="mx-auto h-16 w-16" />
         <h3 className="mt-2 text-base font-bold text-foreground">{title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{message}</p>
         <div className="mt-4 flex gap-2">

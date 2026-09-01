@@ -166,6 +166,18 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    /* Evita o "arrastar e marcar" texto/ícones/fotos sem querer pelo app
+       inteiro (comum em botões, cards, avatares). Formulários continuam
+       selecionáveis abaixo; comentários usam .select-text pra reativar. */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   h1,

@@ -104,8 +104,10 @@ export function ListingActions({
       <button
         onClick={() => setDialog({ kind: "confirm" })}
         disabled={loading}
-        className="flex-1 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-white disabled:opacity-50"
+        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-white disabled:opacity-50"
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/apagar-mensagem.png" alt="" className="h-6 w-6" />
         Remover
       </button>
       {dialogOverlay}

@@ -35,7 +35,9 @@ export function MediaThumbnailMenu({
           }}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10"
         >
-          🗑 Remover
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/apagar-mensagem.png" alt="" className="h-6 w-6" />
+          Remover
         </button>
       </div>
     </>

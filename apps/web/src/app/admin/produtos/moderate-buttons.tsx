@@ -25,7 +25,9 @@ export function ModerateButtons({ productId, status }: { productId: string; stat
         </button>
       )}
       {status !== "removed" && (
-        <button onClick={() => setStatus("removed")} className="text-red-400 underline">
+        <button onClick={() => setStatus("removed")} className="flex items-center gap-1 text-red-400 underline">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/apagar-mensagem.png" alt="" className="h-5 w-5" />
           Remover
         </button>
       )}
