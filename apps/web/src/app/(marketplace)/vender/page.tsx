@@ -96,7 +96,8 @@ export default function VenderPage() {
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
-  const { dragIndex, setItemRef, onPointerDown, shouldSuppressClick } = useDragReorder<PendingMedia>(setMedia);
+  const { dragIndex, settleIndex, hoverIndex, dragOffset, setItemRef, onPointerDown, shouldSuppressClick } =
+    useDragReorder<PendingMedia>(setMedia);
 
   useEffect(() => {
     const supabase = createClient();
@@ -380,52 +381,62 @@ export default function VenderPage() {
 
   const mediaGrid = media.length > 0 && (
     <div className="grid grid-cols-3 gap-2">
-      {media.map((item, index) => (
-        <div
-          key={item.previewUrl}
-          ref={setItemRef(index)}
-          role="button"
-          tabIndex={0}
-          onPointerDown={onPointerDown(index)}
-          onClick={() => {
-            if (shouldSuppressClick()) return;
-            if (item.type === "video") setOpenMenuIndex(index);
-            else setEditingIndex(index);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
+      {media.map((item, index) => {
+        const isDragging = dragIndex === index;
+        const isSettling = settleIndex === index;
+        const offset = isDragging || isSettling ? dragOffset : null;
+        return (
+          <div
+            key={item.previewUrl}
+            ref={setItemRef(index)}
+            role="button"
+            tabIndex={0}
+            onPointerDown={onPointerDown(index)}
+            onClick={() => {
+              if (shouldSuppressClick()) return;
               if (item.type === "video") setOpenMenuIndex(index);
               else setEditingIndex(index);
-            }
-          }}
-          style={{ touchAction: "none" }}
-          className={`relative aspect-square cursor-grab select-none active:cursor-grabbing ${
-            dragIndex === index ? "opacity-50" : ""
-          }`}
-        >
-          <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-muted">
-            {item.type === "video" ? (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={item.previewUrl} className="h-full w-full object-cover" muted />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                if (item.type === "video") setOpenMenuIndex(index);
+                else setEditingIndex(index);
+              }
+            }}
+            style={{
+              touchAction: "none",
+              transform: offset ? `translate(${offset.x}px, ${offset.y}px) scale(${isDragging ? 1.08 : 1})` : undefined,
+              transition: isDragging ? "none" : "transform 200ms ease-out",
+              zIndex: isDragging ? 30 : undefined,
+            }}
+            className={`relative aspect-square cursor-grab select-none active:cursor-grabbing ${
+              isDragging ? "shadow-elevated" : ""
+            } ${hoverIndex === index ? "ring-2 ring-brand" : ""}`}
+          >
+            <div className="absolute inset-0 overflow-hidden rounded-xl border border-border bg-muted">
+              {item.type === "video" ? (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video src={item.previewUrl} className="h-full w-full object-cover" muted draggable={false} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={item.previewUrl} alt="" draggable={false} className="h-full w-full object-cover" />
+              )}
+            </div>
+            {index === 0 && (
+              <span className="absolute left-1 top-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-brand-foreground">
+                Capa
+              </span>
+            )}
+            {item.type === "video" && (
+              <MediaThumbnailMenu
+                open={openMenuIndex === index}
+                onRemove={() => removeMedia(index)}
+                onClose={() => setOpenMenuIndex(null)}
+              />
             )}
           </div>
-          {index === 0 && (
-            <span className="absolute left-1 top-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-brand-foreground">
-              Capa
-            </span>
-          )}
-          {item.type === "video" && (
-            <MediaThumbnailMenu
-              open={openMenuIndex === index}
-              onRemove={() => removeMedia(index)}
-              onClose={() => setOpenMenuIndex(null)}
-            />
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
