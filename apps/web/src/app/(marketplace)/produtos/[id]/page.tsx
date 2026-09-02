@@ -33,6 +33,9 @@ export default async function ProductPage({ params }: { params: { id: string } }
     .select("*, product_media(*)")
     .eq("status", "active")
     .neq("id", product.id)
+    // mesmo filtro do feed principal: produto esgotado não aparece pra
+    // descobrir em lugar nenhum, só por link direto.
+    .or("listing_type.neq.produto,stock.gt.0")
     .order("created_at", { ascending: false })
     .order("position", { foreignTable: "product_media", ascending: true })
     .limit(10);

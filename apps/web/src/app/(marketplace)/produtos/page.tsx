@@ -35,6 +35,10 @@ export default async function ProdutosPage({
     .from("products")
     .select("*, product_media(*)")
     .eq("status", "active")
+    // Produto (não serviço/aluguel/venda de imóvel, que não usam estoque)
+    // some da vitrine/busca assim que o estoque zera — continua acessível
+    // por link direto na página do produto, só não aparece pra descobrir.
+    .or("listing_type.neq.produto,stock.gt.0")
     .order("created_at", { ascending: false })
     .order("position", { foreignTable: "product_media", ascending: true });
 
@@ -85,7 +89,7 @@ export default async function ProdutosPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="relative flex items-center justify-between overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-card to-card/40 p-5 shadow-lg sm:p-7">
+      <section className="relative flex w-fit max-w-full items-center gap-6 overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-card to-card/40 p-5 shadow-lg sm:p-7">
         <div className="z-10">
           <h2 className="font-display text-xl font-bold sm:text-2xl">
             {searchParams.q ? `Resultados para "${searchParams.q}"` : "Desapegue rápido na sua região"}

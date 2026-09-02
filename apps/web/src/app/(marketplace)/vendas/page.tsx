@@ -39,6 +39,15 @@ export default async function VendasPage() {
             <span className="font-medium">{ORDER_STATUS_LABEL[order.status]}</span>
             <span className="text-brand">{formatPriceCents(order.total_cents)}</span>
           </div>
+          <p className="mt-1 text-sm text-foreground">
+            {order.order_items
+              .map((item: any) =>
+                item.quantity > 1
+                  ? `${item.quantity}x ${item.products?.title ?? "Produto removido"}`
+                  : (item.products?.title ?? "Produto removido")
+              )
+              .join(", ")}
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">{order.delivery_address}</p>
           {order.status === "delivered" && (
             <div className="mt-2">

@@ -11,9 +11,13 @@ type Dialog = { kind: "confirm" } | { kind: "info"; message: string } | null;
 export function ListingActions({
   productId,
   status,
+  isSoldOut = false,
+  canDelete = true,
 }: {
   productId: string;
   status: string;
+  isSoldOut?: boolean;
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -94,22 +98,32 @@ export function ListingActions({
 
   return (
     <>
-      <button
-        onClick={() => setStatus(status === "active" ? "paused" : "active")}
-        disabled={loading}
-        className="flex-1 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-brand hover:text-brand-foreground disabled:opacity-50"
-      >
-        {status === "active" ? "Pausar" : "Reativar"}
-      </button>
-      <button
-        onClick={() => setDialog({ kind: "confirm" })}
-        disabled={loading}
-        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-white disabled:opacity-50"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/apagar-mensagem.png" alt="" className="h-6 w-6" />
-        Remover
-      </button>
+      {/* Produto vendido (estoque zerado): já some sozinho da vitrine, então
+          pausar não faz sentido — e editar preço/descrição depois de vendido
+          confundiria quem já comprou. Só resta remover o anúncio. */}
+      {!isSoldOut && (
+        <button
+          onClick={() => setStatus(status === "active" ? "paused" : "active")}
+          disabled={loading}
+          className="flex-1 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-brand hover:text-brand-foreground disabled:opacity-50"
+        >
+          {status === "active" ? "Pausar" : "Reativar"}
+        </button>
+      )}
+      {/* Vendido mas ainda não entregue: o comprador pode estar esperando —
+          não deixa apagar (nem esconder da vitrine) até entregar ou
+          cancelar, senão o comprador fica sem referência do pedido. */}
+      {canDelete && (
+        <button
+          onClick={() => setDialog({ kind: "confirm" })}
+          disabled={loading}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive hover:text-white disabled:opacity-50"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/apagar-mensagem.png" alt="" className="h-6 w-6" />
+          Remover
+        </button>
+      )}
       {dialogOverlay}
     </>
   );

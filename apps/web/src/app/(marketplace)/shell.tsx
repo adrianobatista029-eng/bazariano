@@ -14,13 +14,24 @@ import { InstallAppBanner } from "@/lib/install-app-banner";
 import { CategoryMenu } from "./produtos/category-menu";
 
 const NAV_ITEMS = [
-  { href: "/produtos", label: "Início", icon: "🏠" },
-  { href: "/vender", label: "Vender", icon: "🏷️" },
-  { href: "/meus-anuncios", label: "Meus Anúncios", icon: "📋" },
-  { href: "/minhas-trocas", label: "Minhas Trocas", icon: "🔄" },
-  { href: "/pedidos", label: "Meus Pedidos", icon: "📦" },
-  { href: "/vendas", label: "Minhas Vendas", icon: "💰" },
+  { href: "/produtos", label: "Início", icon: "/botao-home.png" },
+  { href: "/vender", label: "Vender", icon: "/etiqueta-de-venda.png" },
+  { href: "/meus-anuncios", label: "Meus Anúncios", icon: "/tarefa.png" },
+  { href: "/minhas-trocas", label: "Minhas Trocas", icon: "/troca.png" },
+  { href: "/pedidos", label: "Meus Pedidos", icon: "/produtos.png" },
+  { href: "/vendas", label: "Minhas Vendas", icon: "/crescimento-do-dinheiro.png", whiteBg: true },
 ];
+
+// Alguns itens usam emoji, outros (como "Início") um ícone de imagem
+// customizado — detecta pelo caminho começando com "/" pra saber qual
+// renderizar.
+function NavIcon({ icon, className }: { icon: string; className?: string }) {
+  if (icon.startsWith("/")) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={icon} alt="" className={className ?? "h-5 w-5"} />;
+  }
+  return <>{icon}</>;
+}
 
 export function MarketplaceShell({
   children,
@@ -121,11 +132,9 @@ export function MarketplaceShell({
 
   const sidebarContent = (
     <>
-      <Link href="/produtos" className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand font-bold text-brand-foreground shadow-glow">
-          A
-        </div>
-        <span className="font-display text-xl font-bold tracking-wide">AllRotaHub</span>
+      <Link href="/produtos" className="flex items-center p-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/allrotahub-wordmark.png" alt="AllRotaHub" className="wordmark-crisp h-6 w-auto" />
       </Link>
 
       <nav className="flex flex-col gap-2">
@@ -141,7 +150,14 @@ export function MarketplaceShell({
                   : "flex items-center gap-3 rounded-xl p-3 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               }
             >
-              <span className="text-lg">{item.icon}</span> {item.label}
+              <span
+                className={`flex h-10 w-10 items-center justify-center text-3xl ${
+                  item.whiteBg ? "rounded-full bg-white" : ""
+                }`}
+              >
+                <NavIcon icon={item.icon} className="h-10 w-10" />
+              </span>{" "}
+              {item.label}
             </Link>
           );
         })}
@@ -150,7 +166,7 @@ export function MarketplaceShell({
             href="/admin"
             className="flex items-center gap-3 rounded-xl p-3 text-brand transition-colors hover:bg-secondary"
           >
-            <span className="text-lg">🛠️</span> Admin
+            <span className="flex h-10 w-10 items-center justify-center text-3xl">🛠️</span> Admin
           </Link>
         )}
       </nav>
@@ -169,6 +185,68 @@ export function MarketplaceShell({
         <header className="mb-4 flex flex-wrap items-center gap-4 md:mb-5">
           {pathname === "/produtos" && (
             <>
+              <Link href="/produtos" className="order-1 flex shrink-0 items-center md:hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/allrotahub-wordmark.png" alt="AllRotaHub" className="wordmark-crisp h-5 w-auto" />
+              </Link>
+
+              <div className="order-2 ml-auto flex items-center gap-3 md:order-3 md:gap-4">
+                  <CategoryMenu />
+                  <ThemeToggle size="h-9 w-9 text-lg md:h-12 md:w-12 md:text-2xl" />
+                  <button
+                    onClick={() => setCartOpen(true)}
+                    title="Carrinho"
+                    aria-label="Carrinho"
+                    className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand md:h-12 md:w-12"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/carrinho-de-compras.png" alt="" className="icon-crisp h-5 w-5 md:h-8 md:w-8" />
+                    {itemCount > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground">
+                        {itemCount}
+                      </span>
+                    )}
+                  </button>
+                  {isLoggedIn ? (
+                    <button
+                      onClick={() => setProfileOpen(true)}
+                      title="Minha conta"
+                      aria-label="Minha conta"
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand md:h-12 md:w-12"
+                    >
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatarUrl}
+                          alt={displayName}
+                          className="h-full w-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="icon-crisp h-5 w-5 md:h-7 md:w-7"
+                        >
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      )}
+                    </button>
+                  ) : (
+                    <Link
+                      href="/login"
+                      className="whitespace-nowrap rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-glow md:px-5 md:py-2 md:text-base"
+                    >
+                      Entrar
+                    </Link>
+                  )}
+                </div>
+
               <form
                 onSubmit={handleSearch}
                 className="relative order-3 w-full md:order-none md:w-auto md:flex-1 md:max-w-xl"
@@ -181,64 +259,6 @@ export function MarketplaceShell({
                   className="w-full rounded-full border border-border bg-secondary px-6 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </form>
-
-              <div className="ml-auto flex items-center gap-4">
-                <CategoryMenu />
-                <ThemeToggle />
-                <button
-                  onClick={() => setCartOpen(true)}
-                  title="Carrinho"
-                  aria-label="Carrinho"
-                  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/carrinho-de-compras.png" alt="" className="h-5 w-5" />
-                  {itemCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground">
-                      {itemCount}
-                    </span>
-                  )}
-                </button>
-                {isLoggedIn ? (
-                  <button
-                    onClick={() => setProfileOpen(true)}
-                    title="Minha conta"
-                    aria-label="Minha conta"
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand"
-                  >
-                    {avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatarUrl}
-                        alt={displayName}
-                        className="h-full w-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                    )}
-                  </button>
-                ) : (
-                  <Link
-                    href="/login"
-                    className="rounded-full bg-primary px-5 py-2 font-medium text-primary-foreground shadow-glow"
-                  >
-                    Entrar
-                  </Link>
-                )}
-              </div>
             </>
           )}
         </header>
@@ -296,20 +316,20 @@ export function MarketplaceShell({
           hambúrguer, sem precisar abrir a gaveta lateral. */}
       {fabOpen && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-200 md:hidden"
           onClick={() => setFabOpen(false)}
         />
       )}
       <div
-        className="pointer-events-none fixed z-50 flex flex-col items-end gap-2.5 md:hidden"
-        style={{ right: "1rem", bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+        className="pointer-events-none fixed z-50 flex flex-col items-end gap-3 md:hidden"
+        style={{ right: "1rem", bottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
       >
         {fabActions.map((item, index) => (
           <Link
             key={item.href}
             href={item.href}
             onClick={() => setFabOpen(false)}
-            className="pointer-events-auto flex items-center gap-2 rounded-full bg-card py-1.5 pl-3 pr-1.5 shadow-elevated ring-1 ring-border transition-all duration-200 ease-out"
+            className="pointer-events-auto flex items-center gap-3 transition-all duration-200 ease-out"
             style={{
               transitionDelay: fabOpen ? `${index * 30}ms` : "0ms",
               opacity: fabOpen ? 1 : 0,
@@ -319,9 +339,17 @@ export function MarketplaceShell({
               visibility: fabOpen ? "visible" : "hidden",
             }}
           >
-            <span className="whitespace-nowrap text-sm font-medium text-foreground">{item.label}</span>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-lg">
-              {item.icon}
+            <span className="whitespace-nowrap rounded-full bg-card/90 px-3 py-1.5 text-sm font-medium text-foreground shadow-md ring-1 ring-border">
+              {item.label}
+            </span>
+            <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-card text-2xl shadow-elevated ring-1 ring-border">
+              <span
+                className={`flex h-12 w-12 items-center justify-center rounded-full ${
+                  item.whiteBg ? "bg-white" : ""
+                }`}
+              >
+                <NavIcon icon={item.icon} className="h-12 w-12" />
+              </span>
             </span>
           </Link>
         ))}
@@ -333,7 +361,7 @@ export function MarketplaceShell({
           style={{ transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/menu-aberto.png" alt="" className="h-14 w-14" />
+          <img src="/sinal-de-mais.png" alt="" className="h-14 w-14" />
         </button>
       </div>
     </div>

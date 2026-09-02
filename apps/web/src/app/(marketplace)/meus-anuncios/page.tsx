@@ -30,12 +30,46 @@ export default async function MeusAnunciosPage() {
     return <p className="text-muted-foreground">Você ainda não publicou nenhum produto.</p>;
   }
 
+  // Produto vendido não pode ser removido enquanto o pedido ainda está em
+  // andamento (o comprador pode estar esperando a entrega) — só libera de
+  // novo quando entregue ou cancelado (cancelado nunca vai "entregar", então
+  // travar o apagar pra sempre nesse caso deixaria o anúncio preso).
+  const soldOutIds = products
+    .filter((p) => {
+      const listingType = (p as any).listing_type ?? "produto";
+      return p.status === "active" && listingType === "produto" && p.stock <= 0;
+    })
+    .map((p) => p.id);
+
+  const pendingDeliveryIds = new Set<string>();
+  if (soldOutIds.length > 0) {
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("product_id, order_id")
+      .in("product_id", soldOutIds);
+    const orderIds = [...new Set((items ?? []).map((i) => i.order_id))];
+    if (orderIds.length > 0) {
+      const { data: relatedOrders } = await supabase.from("orders").select("id, status").in("id", orderIds);
+      const statusByOrderId = new Map((relatedOrders ?? []).map((o) => [o.id, o.status]));
+      for (const item of items ?? []) {
+        const status = statusByOrderId.get(item.order_id);
+        if (status && status !== "delivered" && status !== "cancelled") {
+          pendingDeliveryIds.add(item.product_id);
+        }
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Meus Anúncios</h1>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {products.map((product) => {
           const cover = product.product_media[0];
+          // TODO: remover o `as any` depois de rodar `supabase gen types` com
+          // a migration 0013_listing_type.sql aplicada.
+          const listingType = (product as any).listing_type ?? "produto";
+          const isSoldOut = product.status === "active" && listingType === "produto" && product.stock <= 0;
           return (
             <div
               key={product.id}
@@ -54,14 +88,16 @@ export default async function MeusAnunciosPage() {
                 )}
                 <span
                   className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-bold shadow-md ${
-                    product.status === "active"
-                      ? "bg-brand text-brand-foreground"
-                      : product.status === "paused"
-                        ? "bg-black/70 text-white"
-                        : "bg-destructive text-white"
+                    isSoldOut
+                      ? "bg-gradient-to-r from-brand to-primary text-primary-foreground"
+                      : product.status === "active"
+                        ? "bg-brand text-brand-foreground"
+                        : product.status === "paused"
+                          ? "bg-black/70 text-white"
+                          : "bg-destructive text-white"
                   }`}
                 >
-                  {STATUS_LABEL[product.status] ?? product.status}
+                  {isSoldOut ? "Vendido" : (STATUS_LABEL[product.status] ?? product.status)}
                 </span>
               </div>
 
@@ -73,13 +109,28 @@ export default async function MeusAnunciosPage() {
               </div>
 
               <div className="mt-auto flex flex-wrap gap-2">
-                <Link
-                  href={`/meus-anuncios/${product.id}/editar`}
-                  className="flex-1 rounded-lg bg-secondary px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
-                >
-                  Editar
-                </Link>
-                <ListingActions productId={product.id} status={product.status} />
+                {!isSoldOut && (
+                  <Link
+                    href={`/meus-anuncios/${product.id}/editar`}
+                    className="flex-1 rounded-lg bg-secondary px-3 py-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-brand hover:text-brand-foreground"
+                  >
+                    Editar
+                  </Link>
+                )}
+                {isSoldOut && (
+                  <Link
+                    href="/vendas"
+                    className="flex-1 rounded-lg bg-gradient-to-r from-brand to-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground shadow-glow"
+                  >
+                    Ver venda
+                  </Link>
+                )}
+                <ListingActions
+                  productId={product.id}
+                  status={product.status}
+                  isSoldOut={isSoldOut}
+                  canDelete={!pendingDeliveryIds.has(product.id)}
+                />
               </div>
             </div>
           );

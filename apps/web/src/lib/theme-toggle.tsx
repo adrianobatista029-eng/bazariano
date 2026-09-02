@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
+export function ThemeToggle({
+  className = "",
+  size = "h-9 w-9 text-lg",
+}: {
+  className?: string;
+  size?: string;
+}) {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -23,11 +29,11 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       aria-label={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
       title={isDark ? "Tema claro" : "Tema escuro"}
       className={
-        "flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:bg-muted " +
+        `flex ${size} items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:bg-muted ` +
         className
       }
     >
-      {isDark ? "☀️" : "🌙"}
+      <span className="icon-crisp">{isDark ? "☀️" : "🌙"}</span>
     </button>
   );
 }

@@ -57,12 +57,12 @@ export function CategoryMenu() {
         className="flex flex-col items-center gap-0.5"
       >
         <span
-          className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors hover:border-brand ${
+          className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors hover:border-brand md:h-12 md:w-12 ${
             open ? "border-brand" : "border-border bg-secondary"
           }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/categories-icon.png" alt="" className="h-5 w-5" />
+          <img src="/categories-icon.png" alt="" className="icon-crisp h-5 w-5 md:h-8 md:w-8" />
         </span>
         <span className={`text-[10px] font-medium ${open ? "text-brand" : "text-muted-foreground"}`}>
           Categorias
