@@ -55,20 +55,35 @@ export function LoginForm() {
   }
 
   return (
-    <div className="grid-compass relative flex min-h-screen items-center justify-center bg-background px-4">
-      <ThemeToggle className="absolute right-4 top-4" />
+    <div className="relative flex min-h-screen flex-col bg-[#0c1626] md:items-center md:justify-center">
+      {/* No mobile a imagem é larga demais pra cobrir a tela sem cortar um
+          bocado — em vez de recortar, mostra ela inteira como um banner no
+          topo (altura natural). No desktop ela estica pra preencher a tela
+          toda de lado a lado, sem sobrar tarja escura nenhuma. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/auth-bg.jpg"
+        alt=""
+        className="w-full object-contain md:absolute md:inset-0 md:h-full md:w-full md:object-fill"
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-full bg-gradient-to-b from-black/35 via-black/25 to-black/45 md:block" />
+      <ThemeToggle className="absolute right-4 top-4 z-10" />
+      <div className="flex flex-1 flex-col items-center px-4 pb-8 pt-5 md:flex-none md:justify-center md:px-4 md:py-0">
       <div className="w-full max-w-sm">
-        <Link href="/produtos" className="mb-8 flex items-center justify-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand font-bold text-brand-foreground shadow-glow">
-            A
+        <div className="surface-panel bg-card/90 p-8 shadow-elevated backdrop-blur-md">
+          <div className="mb-6 flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-foreground">
+              {mode === "sign_in" ? "Entrar" : "Criar conta"}
+            </h1>
+            <Link
+              href="/produtos"
+              aria-label="Sair sem completar"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/letra-x.png" alt="" className="h-4 w-4" />
+            </Link>
           </div>
-          <span className="font-display text-xl font-bold text-foreground">AllRotaHub</span>
-        </Link>
-
-        <div className="surface-panel p-8">
-          <h1 className="mb-6 text-xl font-semibold text-foreground">
-            {mode === "sign_in" ? "Entrar" : "Criar conta"}
-          </h1>
           {searchParams.get("accountDeleted") && (
             <p className="mb-4 rounded-lg bg-secondary px-3 py-2 text-sm text-muted-foreground">
               Sua conta foi apagada com sucesso.
@@ -170,6 +185,7 @@ export function LoginForm() {
             {mode === "sign_in" ? "Não tem conta? Criar uma" : "Já tem conta? Entrar"}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

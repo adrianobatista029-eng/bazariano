@@ -2,24 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Category } from "@marketplace/supabase/queries";
+import type { Category, Subcategory } from "@marketplace/supabase/queries";
 import { listCategoriesWithSubcategories } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
 import { LISTING_TYPES, categoryDomain } from "@/lib/listing-type";
 
 // Botão de categorias no cabeçalho, ao lado do toggle de tema — abre uma
 // lista organizada por tipo de anúncio (produto, serviço, aluguel, venda de
-// imóvel), cada um só com as categorias do seu próprio domínio.
+// imóvel), cada um só com as categorias do seu próprio domínio. Clicar numa
+// categoria expande as subcategorias dela logo abaixo (só uma expandida por
+// vez); clicar numa subcategoria filtra por ela.
 export function CategoryMenu() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
-    listCategoriesWithSubcategories(supabase).then(({ categories: cats }) => {
+    listCategoriesWithSubcategories(supabase).then(({ categories: cats, subcategories: subs }) => {
       setCategories(cats);
+      setSubcategories(subs);
     });
   }, []);
 
@@ -33,9 +38,13 @@ export function CategoryMenu() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  function selectCategory(categoryId: string) {
+  function toggleCategory(categoryId: string) {
+    setExpandedCategoryId((current) => (current === categoryId ? null : categoryId));
+  }
+
+  function selectSubcategory(categoryId: string, subcategoryId: string) {
     setOpen(false);
-    router.push(`/produtos?categoria=${categoryId}`);
+    router.push(`/produtos?categoria=${categoryId}&subcategoria=${subcategoryId}`);
   }
 
   return (
@@ -60,7 +69,7 @@ export function CategoryMenu() {
         </span>
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 max-h-[70vh] w-80 overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-elevated">
+        <div className="fixed inset-x-4 top-20 z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-elevated md:absolute md:inset-x-auto md:right-0 md:top-auto md:mt-2 md:w-80">
           {categories.length === 0 && (
             <p className="text-sm text-muted-foreground">Carregando categorias...</p>
           )}
@@ -73,16 +82,60 @@ export function CategoryMenu() {
                   {type.icon} {type.label}
                 </h4>
                 <div className="flex flex-col gap-0.5">
-                  {typeCategories.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => selectCategory(c.id)}
-                      className="rounded-lg px-2 py-1.5 text-left text-sm text-foreground hover:bg-secondary"
-                    >
-                      {c.name}
-                    </button>
-                  ))}
+                  {typeCategories.map((c) => {
+                    const catSubcategories = subcategories.filter((s) => s.category_id === c.id);
+                    const isExpanded = expandedCategoryId === c.id;
+                    return (
+                      <div key={c.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (catSubcategories.length === 0) {
+                              setOpen(false);
+                              router.push(`/produtos?categoria=${c.id}`);
+                            } else {
+                              toggleCategory(c.id);
+                            }
+                          }}
+                          className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground hover:bg-secondary"
+                        >
+                          {c.name}
+                          {catSubcategories.length > 0 && (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className={`shrink-0 text-muted-foreground transition-transform ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                            >
+                              <path d="m6 9 6 6 6-6" />
+                            </svg>
+                          )}
+                        </button>
+                        {isExpanded && catSubcategories.length > 0 && (
+                          <div className="ml-2 flex flex-col gap-0.5 border-l border-border pl-3">
+                            {catSubcategories.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onClick={() => selectSubcategory(c.id, s.id)}
+                                className="rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+                              >
+                                {s.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );

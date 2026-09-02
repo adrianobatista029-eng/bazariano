@@ -52,7 +52,7 @@ export function MarketplaceShell({
   const [search, setSearch] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const showWelcomeBanner =
     !welcomeDismissed && !avatarUrl && searchParams.get("welcome") === "1";
@@ -115,6 +115,10 @@ export function MarketplaceShell({
     router.refresh();
   }
 
+  const fabActions = isAdmin
+    ? [...NAV_ITEMS, { href: "/admin", label: "Admin", icon: "🛠️" }]
+    : NAV_ITEMS;
+
   const sidebarContent = (
     <>
       <Link href="/produtos" className="flex items-center gap-3">
@@ -131,7 +135,6 @@ export function MarketplaceShell({
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileNavOpen(false)}
               className={
                 active
                   ? "flex items-center gap-3 rounded-xl bg-primary p-3 font-medium text-primary-foreground shadow-md"
@@ -145,7 +148,6 @@ export function MarketplaceShell({
         {isAdmin && (
           <Link
             href="/admin"
-            onClick={() => setMobileNavOpen(false)}
             className="flex items-center gap-3 rounded-xl p-3 text-brand transition-colors hover:bg-secondary"
           >
             <span className="text-lg">🛠️</span> Admin
@@ -162,43 +164,9 @@ export function MarketplaceShell({
         {sidebarContent}
       </aside>
 
-      {/* Sidebar (mobile drawer) */}
-      {mobileNavOpen && (
-        <div
-          className="fixed inset-0 z-50 flex bg-black/50 md:hidden"
-          onClick={() => setMobileNavOpen(false)}
-        >
-          <aside
-            className="flex w-72 max-w-[85vw] flex-col gap-8 border-r border-border bg-card p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-display text-lg font-bold">Menu</span>
-              <button
-                onClick={() => setMobileNavOpen(false)}
-                aria-label="Fechar menu"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/letra-x.png" alt="" className="h-4 w-4" />
-              </button>
-            </div>
-            {sidebarContent}
-          </aside>
-        </div>
-      )}
-
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <header className="mb-4 flex flex-wrap items-center gap-4 md:mb-5">
-          <button
-            onClick={() => setMobileNavOpen(true)}
-            aria-label="Abrir menu"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-foreground md:hidden"
-          >
-            ☰
-          </button>
-
           {pathname === "/produtos" && (
             <>
               <form
@@ -323,6 +291,51 @@ export function MarketplaceShell({
 
       {/* Cart panel (overlay) */}
       <CartPanel isLoggedIn={isLoggedIn} open={cartOpen} onClose={() => setCartOpen(false)} />
+
+      {/* Botão flutuante (mobile) — atalho rápido pras mesmas seções do menu
+          hambúrguer, sem precisar abrir a gaveta lateral. */}
+      {fabOpen && (
+        <div
+          className="fixed inset-0 z-40 md:hidden"
+          onClick={() => setFabOpen(false)}
+        />
+      )}
+      <div
+        className="pointer-events-none fixed z-50 flex flex-col items-end gap-2.5 md:hidden"
+        style={{ right: "1rem", bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        {fabActions.map((item, index) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={() => setFabOpen(false)}
+            className="pointer-events-auto flex items-center gap-2 rounded-full bg-card py-1.5 pl-3 pr-1.5 shadow-elevated ring-1 ring-border transition-all duration-200 ease-out"
+            style={{
+              transitionDelay: fabOpen ? `${index * 30}ms` : "0ms",
+              opacity: fabOpen ? 1 : 0,
+              transform: fabOpen
+                ? "translateY(0) scale(1)"
+                : "translateY(12px) scale(0.85)",
+              visibility: fabOpen ? "visible" : "hidden",
+            }}
+          >
+            <span className="whitespace-nowrap text-sm font-medium text-foreground">{item.label}</span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-lg">
+              {item.icon}
+            </span>
+          </Link>
+        ))}
+        <button
+          onClick={() => setFabOpen((v) => !v)}
+          aria-label={fabOpen ? "Fechar atalhos" : "Abrir atalhos"}
+          aria-expanded={fabOpen}
+          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full shadow-glow transition-transform duration-200 ease-out"
+          style={{ transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/menu-aberto.png" alt="" className="h-14 w-14" />
+        </button>
+      </div>
     </div>
   );
 }

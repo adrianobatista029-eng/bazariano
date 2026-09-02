@@ -24,7 +24,7 @@ type StoryRow = {
 export default async function ProdutosPage({
   searchParams,
 }: {
-  searchParams: { q?: string; categoria?: string };
+  searchParams: { q?: string; categoria?: string; subcategoria?: string };
 }) {
   const supabase = createClient();
   const {
@@ -45,6 +45,9 @@ export default async function ProdutosPage({
     // TODO: remover o `as any` depois de rodar `supabase gen types` com a
     // migration 0012_categories.sql aplicada.
     query = (query as any).eq("category_id", searchParams.categoria);
+  }
+  if (searchParams.subcategoria) {
+    query = (query as any).eq("subcategory_id", searchParams.subcategoria);
   }
 
   const { data: products, error } = await query;
