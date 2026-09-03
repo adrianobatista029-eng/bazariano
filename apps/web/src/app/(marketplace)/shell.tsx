@@ -10,7 +10,6 @@ import { ThemeToggle } from "@/lib/theme-toggle";
 import { resizeImageToDataUrl } from "@/lib/image-resize";
 import { CartPanel } from "./cart-panel";
 import { ProfileModal } from "./profile-modal";
-import { InstallAppBanner } from "@/lib/install-app-banner";
 import { CategoryMenu } from "./produtos/category-menu";
 
 const NAV_ITEMS = [
@@ -134,7 +133,7 @@ export function MarketplaceShell({
     <>
       <Link href="/produtos" className="flex items-center p-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/allrotahub-wordmark.png" alt="AllRotaHub" className="wordmark-crisp h-6 w-auto" />
+        <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-9 w-auto" />
       </Link>
 
       <nav className="flex flex-col gap-2">
@@ -187,7 +186,7 @@ export function MarketplaceShell({
             <>
               <Link href="/produtos" className="order-1 flex shrink-0 items-center md:hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/allrotahub-wordmark.png" alt="AllRotaHub" className="wordmark-crisp h-5 w-auto" />
+                <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-5 w-auto" />
               </Link>
 
               <div className="order-2 ml-auto flex items-center gap-3 md:order-3 md:gap-4">
@@ -262,8 +261,6 @@ export function MarketplaceShell({
             </>
           )}
         </header>
-
-        {pathname === "/produtos" && <InstallAppBanner />}
 
         {showWelcomeBanner && (
           <button

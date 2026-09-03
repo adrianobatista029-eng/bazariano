@@ -12,7 +12,6 @@
   "dependencies": {
     "@marketplace/supabase": "workspace:*",
     "@marketplace/ui": "workspace:*",
-    "@supabase/supabase-js": "^2.45.4",
     "fabric": "^7.4.0",
     "lucide-react": "^1.38.0",
     "mapbox-gl": "^3.7.0",

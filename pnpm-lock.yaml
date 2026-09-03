@@ -117,9 +117,6 @@ importers:
       '@marketplace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@supabase/supabase-js':
-        specifier: ^2.45.4
-        version: 2.112.3
       fabric:
         specifier: ^7.4.0
         version: 7.4.0
@@ -5718,7 +5715,9 @@ snapshots:
       metro-runtime: 0.82.5
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.79.7': {}
 

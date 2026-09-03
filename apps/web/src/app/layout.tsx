@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RegisterServiceWorker } from "@/lib/register-service-worker";
 import { UpdatePrompt } from "@/lib/update-prompt";
+import { AppSplash } from "@/lib/app-splash";
+import { InstallAppModal } from "@/lib/install-app-modal";
 
 export const metadata: Metadata = {
   title: "AllRotaHub",
@@ -33,6 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <RegisterServiceWorker />
         <UpdatePrompt />
+        <AppSplash />
+        <InstallAppModal />
         {children}
       </body>
     </html>
