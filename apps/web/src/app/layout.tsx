@@ -6,7 +6,7 @@ import { AppSplash } from "@/lib/app-splash";
 import { InstallAppModal } from "@/lib/install-app-modal";
 
 export const metadata: Metadata = {
-  title: "AllRotaHub",
+  title: "Bazariano",
   description: "Compre e venda com entrega rastreada",
   manifest: "/manifest.json",
   icons: {

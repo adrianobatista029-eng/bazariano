@@ -1,6 +1,6 @@
 {
-  "name": "AllRotaHub",
-  "short_name": "AllRotaHub",
+  "name": "Bazariano",
+  "short_name": "Bazariano",
   "description": "Compre e venda com entrega rastreada",
   "start_url": "/produtos",
   "scope": "/",

@@ -254,7 +254,7 @@ export function MarketplaceShell({
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar produtos no AllRotaHub..."
+                  placeholder="Buscar produtos no Bazariano..."
                   className="w-full rounded-full border border-border bg-secondary px-6 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </form>
