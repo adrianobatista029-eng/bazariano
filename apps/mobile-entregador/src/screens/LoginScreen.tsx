@@ -5,15 +5,21 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Image,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from "react-native";
+import LinearGradient from "react-native-linear-gradient";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { supabase } from "@/lib/supabase";
 import { COLORS } from "@/theme";
 import type { RootStackParamList } from "@/navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
+
+const BANNER_HEIGHT = Dimensions.get("window").width / 1.833;
 
 export function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
@@ -32,77 +38,77 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.logoRow}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoBadgeText}>A</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* Igual o site: a arte já traz o nome "Bazariano" nela, então vira
+            só um banner no topo — sem duplicar logo por cima. */}
+        <Image
+          source={require("../assets/auth-bg.jpg")}
+          style={styles.banner}
+          resizeMode="cover"
+        />
+        <View style={styles.contentArea}>
+          <View style={styles.card}>
+            <Text style={styles.title}>Entrar</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="E-mail"
+              placeholderTextColor={COLORS.muted}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Senha"
+              placeholderTextColor={COLORS.muted}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+            {error && <Text style={styles.error}>{error}</Text>}
+            <TouchableOpacity onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
+              <LinearGradient
+                colors={[COLORS.accent, COLORS.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.button}
+              >
+                <Text style={styles.buttonText}>{loading ? "Aguarde..." : "Entrar"}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate("Signup")}>
+              <Text style={styles.linkText}>Não tem conta? Cadastre-se</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.logoText}>
-          All<Text style={{ color: COLORS.accent }}>Rota</Text>Hub
-        </Text>
-      </View>
-      <Text style={styles.title}>Entregador</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        placeholderTextColor={COLORS.muted}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        placeholderTextColor={COLORS.muted}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      {error && <Text style={styles.error}>{error}</Text>}
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? "Aguarde..." : "Entrar"}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate("Signup")}>
-        <Text style={styles.linkText}>Não tem conta? Cadastre-se</Text>
-      </TouchableOpacity>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: COLORS.background,
+  root: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { flexGrow: 1 },
+  banner: { width: "100%", height: BANNER_HEIGHT },
+  contentArea: { flex: 1, padding: 16 },
+  // Mesmos valores do .surface-panel do site (radius-xl = 14px, p-8 = 32px).
+  card: {
+    backgroundColor: COLORS.cardSoft,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 32,
   },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 32,
-  },
-  logoBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoBadgeText: { fontSize: 16, fontWeight: "700", color: "white" },
-  logoText: { fontSize: 20, fontWeight: "700", color: COLORS.text },
   title: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "600",
     marginBottom: 24,
-    textAlign: "center",
     color: COLORS.text,
   },
   input: {
@@ -111,18 +117,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     color: COLORS.text,
     borderRadius: 14,
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
     marginBottom: 12,
   },
-  error: { color: COLORS.danger, marginBottom: 12 },
+  error: { color: COLORS.danger, fontSize: 14, marginBottom: 12 },
   button: {
-    backgroundColor: COLORS.accent,
     borderRadius: 14,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: "center",
     marginTop: 8,
   },
-  buttonText: { color: "white", fontWeight: "700", fontSize: 16 },
+  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
   linkButton: { marginTop: 16, alignItems: "center" },
-  linkText: { color: COLORS.accent, fontWeight: "600" },
+  linkText: { color: COLORS.accent, fontSize: 14, textDecorationLine: "underline" },
 });

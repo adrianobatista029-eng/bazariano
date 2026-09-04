@@ -1,15 +1,17 @@
+// Mesmas cores do tema escuro do site (convertidas de oklch pra rgb lendo o
+// computed style real da página, já que React Native não entende oklch).
 export const COLORS = {
-  background: "#0F172A",
-  card: "#1E293B",
-  cardSoft: "rgba(30,41,59,0.6)",
-  border: "#334155",
-  primary: "#3B82F6",
-  accent: "#F97316",
-  accentDark: "#EA580C",
-  accentSoft: "rgba(249,115,22,0.15)",
-  text: "#F1F5F9",
-  muted: "#94A3B8",
-  danger: "#EF4444",
+  background: "#070D19",
+  card: "#111827",
+  cardSoft: "rgba(17,24,39,0.92)",
+  border: "rgba(255,255,255,0.12)",
+  primary: "#026FD7",
+  accent: "#FA6E1D",
+  accentDark: "#D95C15",
+  accentSoft: "rgba(250,110,29,0.15)",
+  text: "#F3F5F8",
+  muted: "#979FAB",
+  danger: "#F22A36",
   success: "#22C55E",
 };
 

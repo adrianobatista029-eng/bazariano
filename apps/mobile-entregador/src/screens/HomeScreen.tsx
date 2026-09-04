@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,11 @@ import {
   ActivityIndicator,
   Image,
 } from "react-native";
+// O mapa fica de propósito atrás da barra de status (visual imersivo, tipo
+// Uber/iFood) — só os cards flutuantes (status/ganhos) precisam do respiro.
+// O SafeAreaView do "react-native" não reserva esse espaço no Android, então
+// usa o inset de verdade só nesse card em vez de no container inteiro.
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import MapboxGL from "@rnmapbox/maps";
@@ -27,7 +32,8 @@ import {
   stopLocationTracking,
   subscribeToDeviceLocation,
 } from "@/lib/location";
-import { hasOverlayPermission, requestOverlayPermission } from "@/lib/overlay";
+import { promptOverlayPermission } from "@/lib/overlay";
+import { promptBatteryOptimizationExemption } from "@/lib/battery";
 import { COLORS, MAPBOX_STYLE_URL } from "@/theme";
 import type { HomeTabParamList, RootStackParamList } from "@/navigation/types";
 import type { CompositeScreenProps } from "@react-navigation/native";
@@ -62,7 +68,30 @@ function distanceKm(from: [number, number], toLng: number, toLat: number) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Isolado num componente próprio pra ticar a cada segundo sem re-renderizar
+// a tela inteira (o mapa do Mapbox estava redesenhando 1x/s por causa disso,
+// travando o app em aparelhos mais fracos). O `key={offer.id}` no lugar onde
+// é usado já cuida de reiniciar a contagem quando troca de oferta.
+function OfferTimer() {
+  const [secondsLeft, setSecondsLeft] = useState(OFFER_SECONDS);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsLeft((s) => (s <= 1 ? OFFER_SECONDS : s - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <View style={styles.timerPill}>
+      <Text style={styles.timerText}>0:{secondsLeft.toString().padStart(2, "0")}</Text>
+    </View>
+  );
+}
+
 export function HomeScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
+  const cameraRef = useRef<MapboxGL.Camera>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [initial, setInitial] = useState("E");
   const [earningsCents, setEarningsCents] = useState(0);
@@ -73,7 +102,6 @@ export function HomeScreen({ navigation }: Props) {
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
-  const [secondsLeft, setSecondsLeft] = useState(OFFER_SECONDS);
   const [accepting, setAccepting] = useState(false);
 
   const offer = availableOrders.find((order) => !skippedIds.has(order.id)) ?? null;
@@ -91,19 +119,19 @@ export function HomeScreen({ navigation }: Props) {
       if (!user) return;
       setCourierId(user.id);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, avatar_url")
-        .eq("id", user.id)
-        .single();
+      // As três consultas são independentes — rodar em paralelo em vez de
+      // uma esperar a outra terminar corta o tempo de carregamento inicial
+      // em até 3x (isso pesava bastante na entrada do app).
+      const [{ data: profile }, { data: courier }, { total_cents }] = await Promise.all([
+        supabase.from("profiles").select("full_name, avatar_url").eq("id", user.id).single(),
+        supabase.from("couriers").select("status").eq("id", user.id).single(),
+        getCourierEarningsToday(supabase, user.id),
+      ]);
+
       setInitial((profile?.full_name?.trim().charAt(0) || "E").toUpperCase());
       setAvatarUrl(profile?.avatar_url ?? null);
+      setEarningsCents(total_cents);
 
-      const { data: courier } = await supabase
-        .from("couriers")
-        .select("status")
-        .eq("id", user.id)
-        .single();
       const online = courier?.status === "online";
       setIsOnline(online);
       if (online) {
@@ -111,8 +139,12 @@ export function HomeScreen({ navigation }: Props) {
         if (granted) startLocationTracking(user.id);
       }
 
-      const { total_cents } = await getCourierEarningsToday(supabase, user.id);
-      setEarningsCents(total_cents);
+      // Pede a permissão de bolha e a isenção de bateria assim que o app
+      // abre, não só quando o entregador tenta ficar online — pra quem já
+      // tem conta e nunca passou pelo cadastro (onde os dois avisos também
+      // aparecem agora).
+      promptOverlayPermission();
+      promptBatteryOptimizationExemption();
     });
   }, []);
 
@@ -132,15 +164,6 @@ export function HomeScreen({ navigation }: Props) {
     const interval = setInterval(loadAvailableOrders, 15000);
     return () => clearInterval(interval);
   }, [isOnline, loadAvailableOrders]);
-
-  useEffect(() => {
-    setSecondsLeft(OFFER_SECONDS);
-    if (!offer) return;
-    const interval = setInterval(() => {
-      setSecondsLeft((s) => (s <= 1 ? OFFER_SECONDS : s - 1));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [offer?.id]);
 
   async function handleToggleOnline() {
     if (!courierId) return;
@@ -177,18 +200,8 @@ export function HomeScreen({ navigation }: Props) {
     startLocationTracking(courierId);
     setIsOnline(true);
     loadAvailableOrders();
-
-    hasOverlayPermission().then((overlayGranted) => {
-      if (overlayGranted) return;
-      Alert.alert(
-        "Ver pedidos sobre outros apps",
-        "Permita que o AllRotaHub apareça sobre outros aplicativos pra você acompanhar tudo mesmo usando o WhatsApp, o mapa ou outro app enquanto estiver online.",
-        [
-          { text: "Agora não", style: "cancel" },
-          { text: "Permitir", onPress: () => requestOverlayPermission() },
-        ]
-      );
-    });
+    promptOverlayPermission();
+    promptBatteryOptimizationExemption();
   }
 
   async function handleAccept() {
@@ -209,6 +222,21 @@ export function HomeScreen({ navigation }: Props) {
     setSkippedIds((prev) => new Set(prev).add(offer.id));
   }
 
+  function handleRecenter() {
+    if (!coords) return;
+    // Sem pitch/heading aqui, só o centro/zoom mudam — o ângulo 3D e a
+    // rotação que o usuário deu no mapa (pinça/dois dedos) ficam do jeito
+    // que estavam. Zera os dois pra voltar pra visão de cima, igual o botão
+    // de localização do Google Maps faz.
+    cameraRef.current?.setCamera({
+      centerCoordinate: coords,
+      zoomLevel: 16,
+      pitch: 0,
+      heading: 0,
+      animationDuration: 500,
+    });
+  }
+
   const km = offer && offer.delivery_lat && offer.delivery_lng && coords
     ? distanceKm(coords, offer.delivery_lng, offer.delivery_lat)
     : null;
@@ -217,8 +245,13 @@ export function HomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mapWrapper}>
         {locationReady ? (
-          <MapboxGL.MapView style={styles.map} styleURL={MAPBOX_STYLE_URL}>
+          <MapboxGL.MapView
+            style={styles.map}
+            styleURL={MAPBOX_STYLE_URL}
+            scaleBarPosition={{ top: insets.top + 90, left: 8 }}
+          >
             <MapboxGL.Camera
+              ref={cameraRef}
               zoomLevel={16}
               centerCoordinate={coords ?? undefined}
               animationMode={coords ? "flyTo" : "moveTo"}
@@ -238,7 +271,7 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         )}
 
-        <View style={styles.headerRow}>
+        <View style={[styles.headerRow, { top: insets.top + 16 }]}>
           <TouchableOpacity
             style={styles.statusPill}
             onPress={handleToggleOnline}
@@ -282,6 +315,18 @@ export function HomeScreen({ navigation }: Props) {
             <Text style={styles.earningsValue}>{formatCurrency(earningsCents)}</Text>
           </View>
         </View>
+
+        {coords && (
+          <TouchableOpacity
+            style={styles.recenterButton}
+            onPress={handleRecenter}
+            activeOpacity={0.7}
+          >
+            <View style={styles.recenterRing}>
+              <View style={styles.recenterDot} />
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
       {offer ? (
@@ -289,11 +334,7 @@ export function HomeScreen({ navigation }: Props) {
           <View style={styles.sheetHandle} />
           <View style={styles.offerHeaderRow}>
             <Text style={styles.offerTitle}>Nova Rota!</Text>
-            <View style={styles.timerPill}>
-              <Text style={styles.timerText}>
-                0:{secondsLeft.toString().padStart(2, "0")}
-              </Text>
-            </View>
+            <OfferTimer key={offer.id} />
           </View>
 
           <View style={styles.offerCard}>
@@ -344,28 +385,7 @@ export function HomeScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </View>
-      ) : (
-        <TouchableOpacity
-          style={styles.idleSheet}
-          onPress={() => navigation.navigate("Pedidos")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.routesCardIcon}>
-            <Text style={{ fontSize: 20 }}>📦</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.routesCardTitle}>
-              {isOnline ? "Procurando pedidos..." : "Você está offline"}
-            </Text>
-            <Text style={styles.routesCardSubtitle}>
-              {isOnline
-                ? "Assim que surgir uma rota, você vê aqui"
-                : "Fique online pra começar a receber pedidos"}
-            </Text>
-          </View>
-          <Text style={styles.routesCardArrow}>›</Text>
-        </TouchableOpacity>
-      )}
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -406,6 +426,39 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+  },
+  // Botão "minha localização", igual o do Google Maps: semi-transparente,
+  // canto inferior esquerdo pra não bater com a bolha de navegação.
+  recenterButton: {
+    position: "absolute",
+    left: 16,
+    bottom: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  recenterRing: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#4285F4",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recenterDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4285F4",
   },
   statusPill: {
     flexDirection: "row",
@@ -451,28 +504,6 @@ const styles = StyleSheet.create({
   },
   earningsLabel: { fontSize: 9, fontWeight: "700", color: "#9CA3AF", letterSpacing: 0.5 },
   earningsValue: { fontSize: 14, fontWeight: "800", color: COLORS.success, marginTop: 2 },
-  idleSheet: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    margin: 16,
-    padding: 16,
-    backgroundColor: COLORS.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  routesCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.accentSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  routesCardTitle: { fontSize: 15, fontWeight: "600", color: COLORS.text },
-  routesCardSubtitle: { fontSize: 13, color: COLORS.muted, marginTop: 2 },
-  routesCardArrow: { fontSize: 24, color: COLORS.muted },
   offerSheet: {
     backgroundColor: "white",
     borderTopLeftRadius: 28,

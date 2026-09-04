@@ -27,6 +27,20 @@ export function listAvailableOrdersForCourier(client: Client) {
     .order("created_at", { ascending: true });
 }
 
+// Avisa em tempo real quando um pedido novo vira disponível pra qualquer
+// entregador (usado pra fazer a bolha flutuante "piscar" com o app em
+// segundo plano, sem precisar ficar dando polling).
+export function subscribeToAvailableOrders(client: Client, onNewOrder: () => void) {
+  return client
+    .channel("available-orders")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "orders", filter: "status=eq.pending" },
+      () => onNewOrder()
+    )
+    .subscribe();
+}
+
 export function getCourierEarningsToday(client: Client, courierId: string) {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);

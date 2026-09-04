@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+// SafeAreaView do "react-native" não reserva espaço no Android — ver
+// HomeScreen.tsx pra mais contexto.
+import { SafeAreaView } from "react-native-safe-area-context";
 import { setCourierStatus } from "@marketplace/supabase";
 import { supabase } from "@/lib/supabase";
 import { stopLocationTracking } from "@/lib/location";

@@ -5,18 +5,25 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
+  Image,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   Alert,
+  Dimensions,
 } from "react-native";
+import LinearGradient from "react-native-linear-gradient";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { createCourierProfile } from "@marketplace/supabase";
 import { supabase } from "@/lib/supabase";
+import { promptOverlayPermission } from "@/lib/overlay";
+import { promptBatteryOptimizationExemption } from "@/lib/battery";
 import { COLORS } from "@/theme";
 import type { RootStackParamList } from "@/navigation/types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Signup">;
+
+const BANNER_HEIGHT = Dimensions.get("window").width / 1.833;
 
 const VEHICLE_TYPES = [
   { value: "moto", label: "Moto" },
@@ -86,133 +93,142 @@ export function SignupScreen({ navigation }: Props) {
       return;
     }
 
-    Alert.alert(
-      "Cadastro enviado",
-      "Sua conta foi criada e está em análise. Você já pode explorar o app, mas só vai receber pedidos depois que a aprovação for concluída."
-    );
+    // Pede a permissão de sobreposição (bolha sobre outros apps) já na
+    // entrada do usuário novo, logo após o cadastro — não espera ele
+    // descobrir isso sozinho só quando tentar ficar online pela primeira
+    // vez (mesmo aviso reaparece em HomeScreen.tsx pra quem já tinha conta).
+    Alert.alert("Cadastro enviado", "Sua conta de entregador foi criada com sucesso.", [
+      {
+        text: "OK",
+        onPress: () => {
+          promptOverlayPermission();
+          promptBatteryOptimizationExemption();
+        },
+      },
+    ]);
     // navegação para a área logada acontece automaticamente via listener de auth state no App.tsx
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.logoRow}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoBadgeText}>A</Text>
-          </View>
-          <Text style={styles.logoText}>
-            All<Text style={{ color: COLORS.accent }}>Rota</Text>Hub
-          </Text>
-        </View>
-        <Text style={styles.title}>Criar conta de entregador</Text>
+        <Image
+          source={require("../assets/auth-bg.jpg")}
+          style={styles.banner}
+          resizeMode="cover"
+        />
+        <View style={styles.contentArea}>
+          <View style={styles.card}>
+            <Text style={styles.title}>Criar conta de entregador</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Nome completo"
-          placeholderTextColor={COLORS.muted}
-          value={fullName}
-          onChangeText={setFullName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor={COLORS.muted}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Senha"
-          placeholderTextColor={COLORS.muted}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Telefone (opcional)"
-          placeholderTextColor={COLORS.muted}
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={setPhone}
-        />
+            <TextInput
+              style={styles.input}
+              placeholder="Nome completo"
+              placeholderTextColor={COLORS.muted}
+              value={fullName}
+              onChangeText={setFullName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="E-mail"
+              placeholderTextColor={COLORS.muted}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Senha"
+              placeholderTextColor={COLORS.muted}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Telefone (opcional)"
+              placeholderTextColor={COLORS.muted}
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
+            />
 
-        <Text style={styles.sectionLabel}>Veículo</Text>
-        <View style={styles.vehicleRow}>
-          {VEHICLE_TYPES.map((v) => (
-            <TouchableOpacity
-              key={v.value}
-              style={[
-                styles.vehicleOption,
-                vehicleType === v.value && styles.vehicleOptionSelected,
-              ]}
-              onPress={() => setVehicleType(v.value)}
-            >
-              <Text
-                style={[
-                  styles.vehicleOptionText,
-                  vehicleType === v.value && styles.vehicleOptionTextSelected,
-                ]}
+            <Text style={styles.sectionLabel}>Veículo</Text>
+            <View style={styles.vehicleRow}>
+              {VEHICLE_TYPES.map((v) => (
+                <TouchableOpacity
+                  key={v.value}
+                  style={[
+                    styles.vehicleOption,
+                    vehicleType === v.value && styles.vehicleOptionSelected,
+                  ]}
+                  onPress={() => setVehicleType(v.value)}
+                >
+                  <Text
+                    style={[
+                      styles.vehicleOptionText,
+                      vehicleType === v.value && styles.vehicleOptionTextSelected,
+                    ]}
+                  >
+                    {v.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Placa do veículo"
+              placeholderTextColor={COLORS.muted}
+              autoCapitalize="characters"
+              value={vehiclePlate}
+              onChangeText={setVehiclePlate}
+            />
+
+            {error && <Text style={styles.error}>{error}</Text>}
+
+            <TouchableOpacity onPress={handleSignup} disabled={loading} activeOpacity={0.85}>
+              <LinearGradient
+                colors={[COLORS.accent, COLORS.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.button}
               >
-                {v.label}
-              </Text>
+                <Text style={styles.buttonText}>{loading ? "Aguarde..." : "Criar conta"}</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          ))}
+
+            <TouchableOpacity style={styles.linkButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.linkText}>Já tem conta? Entrar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Placa do veículo"
-          placeholderTextColor={COLORS.muted}
-          autoCapitalize="characters"
-          value={vehiclePlate}
-          onChangeText={setVehiclePlate}
-        />
-
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? "Aguarde..." : "Criar conta"}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.linkButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.linkText}>Já tem conta? Entrar</Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { flexGrow: 1, justifyContent: "center", padding: 24, paddingVertical: 40 },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 24,
+  root: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { flexGrow: 1 },
+  banner: { width: "100%", height: BANNER_HEIGHT },
+  contentArea: { padding: 16, paddingBottom: 40 },
+  // Mesmos valores do .surface-panel do site (radius-xl = 14px, p-8 = 32px).
+  card: {
+    backgroundColor: COLORS.cardSoft,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 32,
   },
-  logoBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoBadgeText: { fontSize: 16, fontWeight: "700", color: "white" },
-  logoText: { fontSize: 20, fontWeight: "700", color: COLORS.text },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 20,
-    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 24,
     color: COLORS.text,
   },
   input: {
@@ -221,7 +237,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     color: COLORS.text,
     borderRadius: 14,
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
     marginBottom: 12,
   },
   sectionLabel: { color: COLORS.muted, fontSize: 13, fontWeight: "600", marginBottom: 8 },
@@ -231,7 +249,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 12,
     alignItems: "center",
   },
@@ -239,17 +257,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentSoft,
     borderColor: COLORS.accent,
   },
-  vehicleOptionText: { color: COLORS.muted, fontWeight: "600" },
+  vehicleOptionText: { color: COLORS.muted, fontWeight: "600", fontSize: 14 },
   vehicleOptionTextSelected: { color: COLORS.accent },
-  error: { color: COLORS.danger, marginBottom: 12 },
+  error: { color: COLORS.danger, fontSize: 14, marginBottom: 12 },
   button: {
-    backgroundColor: COLORS.accent,
     borderRadius: 14,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: "center",
     marginTop: 8,
   },
-  buttonText: { color: "white", fontWeight: "700", fontSize: 16 },
+  buttonText: { color: "white", fontWeight: "600", fontSize: 16 },
   linkButton: { marginTop: 16, alignItems: "center" },
-  linkText: { color: COLORS.accent, fontWeight: "600" },
+  linkText: { color: COLORS.accent, fontSize: 14, textDecorationLine: "underline" },
 });

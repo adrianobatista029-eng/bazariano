@@ -7,6 +7,7 @@ import { LoginScreen } from "@/screens/LoginScreen";
 import { SignupScreen } from "@/screens/SignupScreen";
 import { HomeTabs } from "@/navigation/HomeTabs";
 import { ActiveDeliveryScreen } from "@/screens/ActiveDeliveryScreen";
+import { AppSplash } from "@/components/AppSplash";
 import type { RootStackParamList } from "@/navigation/types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -14,6 +15,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -28,31 +30,41 @@ export default function App() {
     return () => subscription.subscription.unsubscribe();
   }, []);
 
-  if (!ready) return null;
+  // Só monta a navegação (tela de mapa, consultas ao banco, etc.) depois que
+  // o splash termina — antes, os dois rodavam juntos e o carregamento pesado
+  // do mapa competia com a animação pelo mesmo processador, deixando a
+  // abertura do app travada/pesada. Assim a animação roda sozinha, leve, e
+  // o trabalho pesado só começa quando ela já cobriu a tela toda.
+  const showContent = !showSplash && ready;
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        {session ? (
-          <>
-            <Stack.Screen name="Main" component={HomeTabs} options={{ headerShown: false }} />
-            <Stack.Screen
-              name="ActiveDelivery"
-              component={ActiveDeliveryScreen}
-              options={{ title: "Entrega ativa" }}
-            />
-          </>
-        ) : (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-            <Stack.Screen
-              name="Signup"
-              component={SignupScreen}
-              options={{ headerShown: false }}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <>
+      {showContent && (
+        <NavigationContainer>
+          <Stack.Navigator>
+            {session ? (
+              <>
+                <Stack.Screen name="Main" component={HomeTabs} options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="ActiveDelivery"
+                  component={ActiveDeliveryScreen}
+                  options={{ title: "Entrega ativa" }}
+                />
+              </>
+            ) : (
+              <>
+                <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="Signup"
+                  component={SignupScreen}
+                  options={{ headerShown: false }}
+                />
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      )}
+      {showSplash && <AppSplash onFinish={() => setShowSplash(false)} />}
+    </>
   );
 }

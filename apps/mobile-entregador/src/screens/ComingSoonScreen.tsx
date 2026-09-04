@@ -1,5 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+// SafeAreaView do "react-native" não reserva espaço no Android — ver
+// HomeScreen.tsx pra mais contexto.
+import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "@/theme";
 
 export function ComingSoonScreen({ title }: { title: string }) {

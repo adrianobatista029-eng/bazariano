@@ -1,14 +1,20 @@
 import { AppState, PermissionsAndroid, Platform } from "react-native";
 import type { AppStateStatus, NativeEventSubscription } from "react-native";
 import Geolocation from "react-native-geolocation-service";
-import notifee, { AndroidImportance, AndroidVisibility } from "@notifee/react-native";
+import notifee, {
+  AndroidForegroundServiceType,
+  AndroidImportance,
+  AndroidVisibility,
+} from "@notifee/react-native";
 import { upsertCourierLocation } from "@marketplace/supabase";
 import { supabase } from "./supabase";
 import {
   hideDeliveryBubble,
   resetDeliveryBubbleDismissal,
+  setCourierOnlineFlag,
   showDeliveryBubble,
 } from "./overlay";
+import { startOrderAlerts, stopOrderAlerts } from "./order-alerts";
 
 let watchId: number | null = null;
 let appStateSubscription: NativeEventSubscription | null = null;
@@ -61,6 +67,11 @@ async function startForegroundTracking() {
     android: {
       channelId: TRACKING_CHANNEL_ID,
       asForegroundService: true,
+      // Sem isso, o Android 14+ classifica o serviço como SHORT_SERVICE (tipo
+      // padrão) e o mata sozinho depois de ~3 minutos com ANR — mesmo com
+      // ongoing:true. LOCATION é o tipo correto pra rastreamento contínuo e
+      // já casa com a permissão FOREGROUND_SERVICE_LOCATION do manifest.
+      foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_LOCATION],
       ongoing: true,
       smallIcon: "ic_launcher",
       importance: AndroidImportance.LOW,
@@ -109,10 +120,12 @@ export async function requestLocationPermission(): Promise<boolean> {
 export function startLocationTracking(courierId: string) {
   if (watchId !== null) return;
 
+  setCourierOnlineFlag(true);
   startForegroundTracking().catch((error) =>
     console.warn("Falha ao iniciar serviço em primeiro plano", error)
   );
   watchAppStateForBubble();
+  startOrderAlerts();
 
   watchId = Geolocation.watchPosition(
     (position) => {
@@ -133,6 +146,7 @@ export function startLocationTracking(courierId: string) {
 }
 
 export function stopLocationTracking() {
+  setCourierOnlineFlag(false);
   if (watchId !== null) {
     Geolocation.clearWatch(watchId);
     watchId = null;
@@ -141,4 +155,5 @@ export function stopLocationTracking() {
     console.warn("Falha ao parar serviço em primeiro plano", error)
   );
   unwatchAppStateForBubble();
+  stopOrderAlerts();
 }
