@@ -44,12 +44,12 @@ create trigger set_orders_seller_name before insert on public.orders
 -- muda, avisa a Edge Function sync-order do projeto do entregador, que
 -- atualiza o espelho `deliveries` de lá.
 --
--- Antes de aplicar esta migration, configure (uma vez, via SQL Editor do
--- Supabase deste projeto):
---   alter database postgres set app.settings.courier_sync_url =
---     'https://<PROJETO-ENTREGADOR>.functions.supabase.co/sync-order';
---   alter database postgres set app.settings.delivery_bridge_secret =
---     '<mesmo valor usado em DELIVERY_BRIDGE_SECRET nos dois lados>';
+-- A URL e o segredo ficam embutidos direto na função (em vez de
+-- `current_setting`/`alter database ... set`) porque o Supabase hospedado
+-- não dá permissão de superuser pra configurar parâmetros customizados no
+-- banco — só o dono do projeto lê o código desta função mesmo assim.
+-- Se o segredo mudar, é só rodar este `create or replace function` de novo
+-- com o valor novo.
 -- ---------------------------------------------------------------
 create extension if not exists pg_net with schema extensions;
 
@@ -57,10 +57,10 @@ create or replace function public.notify_courier_system()
 returns trigger as $$
 begin
   perform net.http_post(
-    url := current_setting('app.settings.courier_sync_url', true),
+    url := 'https://oixngxhypizudmdxdgsd.supabase.co/functions/v1/sync-order',
     headers := jsonb_build_object(
       'content-type', 'application/json',
-      'x-bridge-secret', current_setting('app.settings.delivery_bridge_secret', true)
+      'x-bridge-secret', '355e95bbd4cb2a291f07b95cff05bdeb8ada5031c8ab3c68e92f9b0a89f12c18'
     ),
     body := jsonb_build_object('type', TG_OP, 'record', row_to_json(new))
   );
