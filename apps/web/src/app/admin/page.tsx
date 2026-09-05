@@ -3,19 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 export default async function AdminOverviewPage() {
   const supabase = createClient();
 
-  const [{ count: usersCount }, { count: productsCount }, { count: ordersCount }, { count: pendingCouriers }] =
+  const [{ count: usersCount }, { count: productsCount }, { count: ordersCount }] =
     await Promise.all([
       supabase.from("profiles").select("*", { count: "exact", head: true }),
       supabase.from("products").select("*", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("orders").select("*", { count: "exact", head: true }),
-      supabase.from("couriers").select("*", { count: "exact", head: true }).eq("approved", false),
     ]);
 
   const cards = [
     { label: "Usuários", value: usersCount ?? 0 },
     { label: "Produtos ativos", value: productsCount ?? 0 },
     { label: "Pedidos totais", value: ordersCount ?? 0 },
-    { label: "Entregadores pendentes", value: pendingCouriers ?? 0 },
   ];
 
   return (
