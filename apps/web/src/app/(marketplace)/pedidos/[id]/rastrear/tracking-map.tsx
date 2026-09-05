@@ -68,7 +68,13 @@ export function TrackingMap({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orderId, initialCourierLocation]);
+    // initialCourierLocation é só a posição de largada (antes do primeiro
+    // evento em tempo real) — de propósito fora das deps. Um objeto novo
+    // chega a cada atualização de orders (a página inteira agora é
+    // reativa), e incluir isso aqui cancelava/recriava a assinatura do
+    // Realtime a cada localização nova, quebrando o tempo real.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
 
   return <div ref={containerRef} className="h-96 w-full rounded-lg border border-border" />;
 }
