@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import type { UserRole } from "@marketplace/supabase";
 import { createClient } from "@/lib/supabase/client";
 
-const ROLES: UserRole[] = ["buyer_seller", "admin", "courier"];
+// 'courier' não é mais uma opção aqui — cadastro de entregador agora
+// acontece só no sistema separado (banco/login próprios), nunca promovendo
+// um usuário do marketplace por este select.
+const ROLES: UserRole[] = ["buyer_seller", "admin"];
 
 export function RoleSelect({ userId, currentRole }: { userId: string; currentRole: UserRole }) {
   const router = useRouter();
