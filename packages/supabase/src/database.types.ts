@@ -14,73 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      courier_locations: {
-        Row: {
-          courier_id: string
-          lat: number
-          lng: number
-          updated_at: string
-        }
-        Insert: {
-          courier_id: string
-          lat: number
-          lng: number
-          updated_at?: string
-        }
-        Update: {
-          courier_id?: string
-          lat?: number
-          lng?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "courier_locations_courier_id_fkey"
-            columns: ["courier_id"]
-            isOneToOne: true
-            referencedRelation: "couriers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      couriers: {
-        Row: {
-          approved: boolean
-          created_at: string
-          document_url: string | null
-          id: string
-          status: Database["public"]["Enums"]["courier_status"]
-          vehicle_plate: string | null
-          vehicle_type: string | null
-        }
-        Insert: {
-          approved?: boolean
-          created_at?: string
-          document_url?: string | null
-          id: string
-          status?: Database["public"]["Enums"]["courier_status"]
-          vehicle_plate?: string | null
-          vehicle_type?: string | null
-        }
-        Update: {
-          approved?: boolean
-          created_at?: string
-          document_url?: string | null
-          id?: string
-          status?: Database["public"]["Enums"]["courier_status"]
-          vehicle_plate?: string | null
-          vehicle_type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "couriers_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       order_items: {
         Row: {
           id: string
@@ -311,27 +244,8 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      register_as_courier: {
-        Args: { p_vehicle_plate: string; p_vehicle_type: string }
-        Returns: {
-          approved: boolean
-          created_at: string
-          document_url: string | null
-          id: string
-          status: Database["public"]["Enums"]["courier_status"]
-          vehicle_plate: string | null
-          vehicle_type: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "couriers"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
     }
     Enums: {
-      courier_status: "offline" | "online" | "busy"
       order_status:
         | "pending"
         | "accepted"
@@ -467,7 +381,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      courier_status: ["offline", "online", "busy"],
       order_status: [
         "pending",
         "accepted",
@@ -484,4 +397,3 @@ export const Constants = {
 // Aliases de conveniência usados pelos apps (web, admin, mobile).
 export type UserRole = Database["public"]["Enums"]["user_role"]
 export type OrderStatus = Database["public"]["Enums"]["order_status"]
-export type CourierStatus = Database["public"]["Enums"]["courier_status"]
