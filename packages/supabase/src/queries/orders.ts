@@ -57,6 +57,31 @@ export function getCourierEarningsToday(client: Client, courierId: string) {
     }));
 }
 
+// Rastreamento ao vivo: courier_lat/courier_lng agora vivem em `orders`
+// (ver migration 0027_courier_bridge.sql) — quem escreve ali é a rota de
+// API /api/deliveries/[id]/location, chamada pelo sistema do entregador
+// (projeto Supabase separado), não mais o app do entregador direto na
+// tabela `courier_locations` deste banco.
+export function subscribeToOrderLocation(
+  client: Client,
+  orderId: string,
+  onUpdate: (location: { lat: number; lng: number }) => void
+) {
+  return client
+    .channel(`order-location-${orderId}`)
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` },
+      (payload) => {
+        const row = payload.new as Database["public"]["Tables"]["orders"]["Row"];
+        if (row.courier_lat != null && row.courier_lng != null) {
+          onUpdate({ lat: row.courier_lat, lng: row.courier_lng });
+        }
+      }
+    )
+    .subscribe();
+}
+
 export function getOrderById(client: Client, orderId: string) {
   return client
     .from("orders")

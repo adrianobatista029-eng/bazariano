@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { getCourierLocation, subscribeToCourierLocation } from "@marketplace/supabase/queries";
+import { subscribeToOrderLocation } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
@@ -11,10 +11,12 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 type Point = { lat: number; lng: number };
 
 export function TrackingMap({
-  courierId,
+  orderId,
+  initialCourierLocation,
   destination,
 }: {
-  courierId: string;
+  orderId: string;
+  initialCourierLocation: Point | null;
   destination: Point | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,18 +57,18 @@ export function TrackingMap({
       mapRef.current.panTo([lng, lat]);
     }
 
-    getCourierLocation(supabase, courierId).then(({ data }) => {
-      if (data) moveCourierMarker(data.lat, data.lng);
-    });
+    if (initialCourierLocation) {
+      moveCourierMarker(initialCourierLocation.lat, initialCourierLocation.lng);
+    }
 
-    const channel = subscribeToCourierLocation(supabase, courierId, (location) => {
+    const channel = subscribeToOrderLocation(supabase, orderId, (location) => {
       moveCourierMarker(location.lat, location.lng);
     });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [courierId]);
+  }, [orderId, initialCourierLocation]);
 
   return <div ref={containerRef} className="h-96 w-full rounded-lg border border-border" />;
 }

@@ -23,7 +23,12 @@ export default async function RastrearPage({ params }: { params: { id: string } 
 
       {order.courier_id && ["picked_up", "delivering"].includes(order.status) ? (
         <TrackingMap
-          courierId={order.courier_id}
+          orderId={order.id}
+          initialCourierLocation={
+            order.courier_lat && order.courier_lng
+              ? { lat: order.courier_lat, lng: order.courier_lng }
+              : null
+          }
           destination={
             order.delivery_lat && order.delivery_lng
               ? { lat: order.delivery_lat, lng: order.delivery_lng }

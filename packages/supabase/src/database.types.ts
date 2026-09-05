@@ -124,12 +124,15 @@ export type Database = {
         Row: {
           buyer_id: string
           courier_id: string | null
+          courier_lat: number | null
+          courier_lng: number | null
           created_at: string
           delivery_address: string
           delivery_lat: number | null
           delivery_lng: number | null
           id: string
           seller_id: string
+          seller_name: string | null
           status: Database["public"]["Enums"]["order_status"]
           total_cents: number
           updated_at: string
@@ -137,12 +140,15 @@ export type Database = {
         Insert: {
           buyer_id: string
           courier_id?: string | null
+          courier_lat?: number | null
+          courier_lng?: number | null
           created_at?: string
           delivery_address: string
           delivery_lat?: number | null
           delivery_lng?: number | null
           id?: string
           seller_id: string
+          seller_name?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_cents: number
           updated_at?: string
@@ -150,12 +156,15 @@ export type Database = {
         Update: {
           buyer_id?: string
           courier_id?: string | null
+          courier_lat?: number | null
+          courier_lng?: number | null
           created_at?: string
           delivery_address?: string
           delivery_lat?: number | null
           delivery_lng?: number | null
           id?: string
           seller_id?: string
+          seller_name?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total_cents?: number
           updated_at?: string
