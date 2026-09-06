@@ -30,7 +30,6 @@ export function StoreForm({
   const router = useRouter();
   const [name, setName] = useState(existingStore?.name ?? "");
   const [slug, setSlug] = useState(existingStore?.slug ?? "");
-  const [slugEdited, setSlugEdited] = useState(!!existingStore);
   const [description, setDescription] = useState(existingStore?.description ?? "");
   const [logoUrl, setLogoUrl] = useState(existingStore?.logo_url ?? null);
   const [bannerUrl, setBannerUrl] = useState(existingStore?.banner_url ?? null);
@@ -40,7 +39,9 @@ export function StoreForm({
 
   function handleNameChange(value: string) {
     setName(value);
-    if (!slugEdited) setSlug(slugify(value));
+    // Endereço nunca é digitado à mão — sempre deriva do nome, na criação
+    // e na edição (depois de criado, ele fica travado de qualquer jeito).
+    if (!existingStore) setSlug(slugify(value));
   }
 
   async function handleUploadLogo(file: File) {
@@ -114,21 +115,15 @@ export function StoreForm({
           <span>bazariano.com/loja/</span>
           <input
             value={slug}
-            onChange={(e) => {
-              setSlugEdited(true);
-              setSlug(e.target.value);
-            }}
+            readOnly
+            disabled
             placeholder="loja-do-joao"
-            disabled={!!existingStore}
-            readOnly={!!existingStore}
-            className="flex-1 rounded-lg border border-border bg-secondary px-3 py-1.5 text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 cursor-not-allowed rounded-lg border border-border bg-secondary px-3 py-1.5 text-foreground opacity-60"
           />
         </div>
-        {existingStore && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            O endereço não pode ser trocado depois de criado — já está tudo conectado a ele.
-          </p>
-        )}
+        <p className="mt-1 text-xs text-muted-foreground">
+          Gerado automaticamente a partir do nome{existingStore ? " — não muda depois de criado." : "."}
+        </p>
       </div>
 
       <div>
