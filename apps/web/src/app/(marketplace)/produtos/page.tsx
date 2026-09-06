@@ -106,10 +106,10 @@ export default async function ProdutosPage({
         </section>
       ) : (
         <div className="flex flex-col gap-4 md:flex-row">
-          <div className="min-w-0 md:w-1/2">
+          <div className="min-w-0 md:w-3/5">
             <BannerCarousel />
           </div>
-          <div className="min-w-0 md:w-1/2">
+          <div className="min-w-0 md:w-2/5">
             <PromoVideo />
           </div>
         </div>
