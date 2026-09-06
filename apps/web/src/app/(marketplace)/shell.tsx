@@ -196,7 +196,7 @@ export function MarketplaceShell({
           na linha de baixo — estilo grande e-commerce, sem ícone grande de
           sidebar. Sempre visível, em qualquer página. */}
       <header className="sticky top-0 z-30 hidden border-b border-border bg-card/60 backdrop-blur-md md:block">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
+        <div className="flex items-center gap-6 px-6 py-3">
           <Link href="/produtos" className="flex shrink-0 items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-8 w-auto" />
@@ -204,7 +204,7 @@ export function MarketplaceShell({
           {searchForm}
           <div className="ml-auto flex shrink-0 items-center gap-3">{topActions}</div>
         </div>
-        <nav className="mx-auto flex max-w-6xl items-center gap-6 overflow-x-auto px-6">
+        <nav className="flex items-center gap-6 overflow-x-auto px-6">
           <CategoryMenu variant="text" />
           <span className="h-3.5 w-px shrink-0 bg-border" />
           {NAV_ITEMS.map((item) => {
@@ -239,7 +239,7 @@ export function MarketplaceShell({
       </header>
 
       {/* Main content */}
-      <main className="mx-auto max-w-6xl p-4 md:p-8">
+      <main className="p-4 md:p-8">
         <div className="mb-4 flex flex-wrap items-center gap-4 md:hidden">
           {pathname === "/produtos" && (
             <>
