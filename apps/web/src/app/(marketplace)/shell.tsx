@@ -15,6 +15,7 @@ import { CategoryMenu } from "./produtos/category-menu";
 const NAV_ITEMS = [
   { href: "/produtos", label: "Início", icon: "/botao-home.png" },
   { href: "/vender", label: "Vender", icon: "/etiqueta-de-venda.png" },
+  { href: "/loja", label: "Minha Loja", icon: "🏪" },
   { href: "/meus-anuncios", label: "Meus Anúncios", icon: "/tarefa.png" },
   { href: "/minhas-trocas", label: "Minhas Trocas", icon: "/troca.png" },
   { href: "/pedidos", label: "Meus Pedidos", icon: "/produtos.png" },

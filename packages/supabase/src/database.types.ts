@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      stores: {
+        Row: {
+          id: string
+          slug: string
+          name: string
+          description: string | null
+          logo_url: string | null
+          banner_url: string | null
+          primary_color: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          slug: string
+          name: string
+          description?: string | null
+          logo_url?: string | null
+          banner_url?: string | null
+          primary_color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          name?: string
+          description?: string | null
+          logo_url?: string | null
+          banner_url?: string | null
+          primary_color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stores_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           id: string
