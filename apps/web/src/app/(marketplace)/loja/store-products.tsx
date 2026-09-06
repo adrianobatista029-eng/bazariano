@@ -9,6 +9,9 @@ import {
   updateProduct,
   uploadProductMedia,
   productMediaStoragePath,
+  deleteProductMedia,
+  deleteProductMediaFile,
+  productMediaPathFromUrl,
 } from "@marketplace/supabase/queries";
 import type { Database } from "@marketplace/supabase";
 import { formatPriceCents } from "@/lib/format";
@@ -69,8 +72,9 @@ export function StoreProducts({
           .sort((a, b) => a.position - b.position)
           .map((product, index) =>
             editingId === product.id ? (
-              <EditPriceCard
+              <EditProductCard
                 key={product.id}
+                ownerId={ownerId}
                 product={product}
                 onDone={() => {
                   setEditingId(null);
@@ -144,73 +148,263 @@ export function StoreProducts({
   );
 }
 
-// Diferente de "meus anúncios": aqui o preço é livre pra subir ou descer
-// à vontade — só os outros campos (título, fotos, etc.) continuam sem
-// edição depois de criado.
-function EditPriceCard({
+// Diferente de "meus anúncios": aqui não existe trava nenhuma — o vendedor
+// edita tudo à vontade (título, descrição, preço, estoque, fotos,
+// especificações), quantas vezes quiser.
+function EditProductCard({
+  ownerId,
   product,
   onDone,
   onCancel,
 }: {
+  ownerId: string;
   product: Product;
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const originalPriceCents = product.price_cents;
-  const [priceCents, setPriceCents] = useState(originalPriceCents);
+  const [title, setTitle] = useState(product.title);
+  const [description, setDescription] = useState(product.description ?? "");
+  const [priceCents, setPriceCents] = useState(product.price_cents);
+  const [stock, setStock] = useState(String(product.stock));
+  const [specs, setSpecs] = useState<{ label: string; value: string }[]>(
+    Array.isArray(product.specs) ? (product.specs as { label: string; value: string }[]) : []
+  );
+  const [gallery, setGallery] = useState(product.product_media.filter((m) => m.section !== "details"));
+  const [details, setDetails] = useState(product.product_media.filter((m) => m.section === "details"));
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newDetailFiles, setNewDetailFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function updateSpec(index: number, field: "label" | "value", value: string) {
+    setSpecs((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+  }
+
+  function removeSpec(index: number) {
+    setSpecs((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function removeExistingMedia(mediaId: string, section: "gallery" | "details") {
+    setRemovedIds((prev) => [...prev, mediaId]);
+    if (section === "gallery") setGallery((prev) => prev.filter((m) => m.id !== mediaId));
+    else setDetails((prev) => prev.filter((m) => m.id !== mediaId));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!priceCents || priceCents <= 0) {
-      setError("Informe um preço válido.");
+    if (!title.trim() || !priceCents || priceCents <= 0) {
+      setError("Preencha nome e preço válidos.");
       return;
     }
 
     setSaving(true);
     const supabase = createClient();
-    const { error: updateError } = await updateProduct(supabase, product.id, { price_cents: priceCents });
-    setSaving(false);
+
+    const cleanSpecs = specs.filter((s) => s.label.trim() && s.value.trim());
+
+    const { error: updateError } = await updateProduct(supabase, product.id, {
+      title: title.trim(),
+      description: description.trim() || null,
+      price_cents: priceCents,
+      stock: parseInt(stock, 10) || 0,
+      specs: cleanSpecs,
+    });
 
     if (updateError) {
+      setSaving(false);
       setError("Não foi possível salvar agora.");
       return;
     }
 
+    for (const mediaId of removedIds) {
+      const media = product.product_media.find((m) => m.id === mediaId);
+      await deleteProductMedia(supabase, mediaId);
+      const path = media && productMediaPathFromUrl(media.url);
+      if (path) await deleteProductMediaFile(supabase, path);
+    }
+
+    const mediaRows = [];
+    const basePosition = gallery.length + details.length;
+    for (const [i, file] of newFiles.entries()) {
+      const path = productMediaStoragePath(ownerId, product.id, file.name, basePosition + i);
+      const { url, error: uploadError } = await uploadProductMedia(supabase, path, file);
+      if (uploadError || !url) continue;
+      mediaRows.push({
+        product_id: product.id,
+        url,
+        type: "photo" as const,
+        position: gallery.length + i,
+        section: "gallery" as const,
+      });
+    }
+    for (const [i, file] of newDetailFiles.entries()) {
+      const path = productMediaStoragePath(ownerId, product.id, file.name, basePosition + newFiles.length + i);
+      const { url, error: uploadError } = await uploadProductMedia(supabase, path, file);
+      if (uploadError || !url) continue;
+      mediaRows.push({
+        product_id: product.id,
+        url,
+        type: "photo" as const,
+        position: details.length + i,
+        section: "details" as const,
+      });
+    }
+    if (mediaRows.length > 0) {
+      await createProductMedia(supabase, mediaRows);
+    }
+
+    setSaving(false);
     onDone();
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-2 rounded-2xl border border-border bg-card/30 p-3 shadow-lg"
+      className="col-span-2 flex flex-col gap-3 rounded-2xl border border-border bg-card/30 p-4 shadow-lg sm:col-span-3 lg:col-span-4"
     >
-      <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h3>
-      <p className="text-xs text-muted-foreground">
-        Preço atual: {formatPriceCents(originalPriceCents)} · Estoque: {product.stock}
-      </p>
-      <PriceInput
-        required
-        cents={priceCents}
-        onChange={setPriceCents}
-        className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm text-foreground"
+      <div className="grid gap-3 sm:grid-cols-2">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Nome do produto"
+          className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
+        />
+        <PriceInput
+          required
+          cents={priceCents}
+          onChange={setPriceCents}
+          placeholder="Preço (ex: 49,90)"
+          className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
+        />
+      </div>
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Descrição (opcional)"
+        rows={2}
+        className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      <div className="mt-auto flex gap-2">
+      <input
+        required
+        type="number"
+        min={0}
+        value={stock}
+        onChange={(e) => setStock(e.target.value)}
+        placeholder="Estoque"
+        className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground sm:max-w-xs"
+      />
+
+      <div>
+        <label className="mb-1 block text-xs text-muted-foreground">Fotos principais</label>
+        {gallery.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {gallery.map((m) => (
+              <div key={m.id} className="relative h-16 w-16 overflow-hidden rounded-lg bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={m.url} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeExistingMedia(m.id, "gallery")}
+                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => setNewFiles(Array.from(e.target.files ?? []))}
+          className="text-sm text-muted-foreground"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-muted-foreground">
+          Mais fotos (detalhes, mostradas embaixo na página do produto)
+        </label>
+        {details.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {details.map((m) => (
+              <div key={m.id} className="relative h-16 w-16 overflow-hidden rounded-lg bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={m.url} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeExistingMedia(m.id, "details")}
+                  className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => setNewDetailFiles(Array.from(e.target.files ?? []))}
+          className="text-sm text-muted-foreground"
+        />
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-xs text-muted-foreground">Especificações (opcional)</label>
+          <button
+            type="button"
+            onClick={() => setSpecs((prev) => [...prev, { label: "", value: "" }])}
+            className="text-xs font-medium text-brand"
+          >
+            + adicionar linha
+          </button>
+        </div>
+        {specs.map((spec, i) => (
+          <div key={i} className="mb-2 flex gap-2">
+            <input
+              value={spec.label}
+              onChange={(e) => updateSpec(i, "label", e.target.value)}
+              placeholder="Ex: Material"
+              className="flex-1 rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm text-foreground"
+            />
+            <input
+              value={spec.value}
+              onChange={(e) => updateSpec(i, "value", e.target.value)}
+              placeholder="Ex: Algodão"
+              className="flex-1 rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm text-foreground"
+            />
+            <button
+              type="button"
+              onClick={() => removeSpec(i)}
+              className="rounded-lg bg-destructive/10 px-2 text-xs text-destructive"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="flex gap-2">
         <button
           type="submit"
           disabled={saving}
-          className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
+          className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-glow disabled:opacity-60"
         >
-          {saving ? "Salvando..." : "Salvar"}
+          {saving ? "Salvando..." : "Salvar alterações"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-foreground"
+          className="rounded-full bg-secondary px-5 py-2 text-sm font-medium text-foreground"
         >
           Cancelar
         </button>
