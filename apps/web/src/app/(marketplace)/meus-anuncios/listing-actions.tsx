@@ -13,13 +13,11 @@ export function ListingActions({
   status,
   isSoldOut = false,
   canDelete = true,
-  inStore = false,
 }: {
   productId: string;
   status: string;
   isSoldOut?: boolean;
   canDelete?: boolean;
-  inStore?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -29,14 +27,6 @@ export function ListingActions({
     setLoading(true);
     const supabase = createClient();
     await updateProduct(supabase, productId, { status: next });
-    setLoading(false);
-    router.refresh();
-  }
-
-  async function toggleInStore() {
-    setLoading(true);
-    const supabase = createClient();
-    await updateProduct(supabase, productId, { in_store: !inStore });
     setLoading(false);
     router.refresh();
   }
@@ -118,21 +108,6 @@ export function ListingActions({
           className="flex-1 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-brand hover:text-brand-foreground disabled:opacity-50"
         >
           {status === "active" ? "Pausar" : "Reativar"}
-        </button>
-      )}
-      {/* Só entra na loja pública o que o vendedor escolhe colocar aqui —
-          Meus Anúncios continua sendo a lista completa dele. */}
-      {!isSoldOut && (
-        <button
-          onClick={toggleInStore}
-          disabled={loading}
-          className={
-            inStore
-              ? "flex-1 rounded-lg bg-brand/15 px-3 py-2 text-sm font-medium text-brand transition-colors hover:bg-brand hover:text-brand-foreground disabled:opacity-50"
-              : "flex-1 rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-brand hover:text-brand-foreground disabled:opacity-50"
-          }
-        >
-          {inStore ? "Na loja ✓" : "Adicionar à loja"}
         </button>
       )}
       {/* Vendido mas ainda não entregue: o comprador pode estar esperando —

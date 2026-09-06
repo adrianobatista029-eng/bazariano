@@ -130,7 +130,6 @@ export default async function MeusAnunciosPage() {
                   status={product.status}
                   isSoldOut={isSoldOut}
                   canDelete={!pendingDeliveryIds.has(product.id)}
-                  inStore={product.in_store}
                 />
               </div>
             </div>

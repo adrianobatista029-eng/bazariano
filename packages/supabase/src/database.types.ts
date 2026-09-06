@@ -211,6 +211,7 @@ export type Database = {
           description: string | null
           id: string
           in_store: boolean
+          position: number
           price_cents: number
           seller_id: string
           status: string
@@ -223,6 +224,7 @@ export type Database = {
           description?: string | null
           id?: string
           in_store?: boolean
+          position?: number
           price_cents: number
           seller_id: string
           status?: string
@@ -235,6 +237,7 @@ export type Database = {
           description?: string | null
           id?: string
           in_store?: boolean
+          position?: number
           price_cents?: number
           seller_id?: string
           status?: string
