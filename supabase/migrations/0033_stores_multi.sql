@@ -23,15 +23,11 @@ create policy "stores_update_own" on public.stores
   for update using (owner_id = auth.uid());
 
 -- ---------------------------------------------------------------
--- products.in_store (boolean) -> products.store_id (aponta pra QUAL loja,
--- já que agora um vendedor pode ter mais de uma).
+-- products.store_id: aponta pra QUAL loja o produto pertence (a migration
+-- que criava `in_store` nunca chegou a rodar, então não tem dado nenhum
+-- pra migrar daqui — o campo nasce vazio mesmo).
 -- ---------------------------------------------------------------
-alter table public.products add column store_id uuid references public.stores (id) on delete set null;
+alter table public.products add column if not exists store_id uuid references public.stores (id) on delete set null;
+alter table public.products add column if not exists position integer not null default 0;
 
-update public.products p
-set store_id = (select s.id from public.stores s where s.owner_id = p.seller_id limit 1)
-where p.in_store = true;
-
-alter table public.products drop column in_store;
-
-create index products_store_id_idx on public.products (store_id);
+create index if not exists products_store_id_idx on public.products (store_id);
