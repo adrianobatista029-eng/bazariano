@@ -44,3 +44,10 @@ export function updateStore(
 ) {
   return client.from("stores").update(patch).eq("id", storeId).select().single();
 }
+
+// Apaga a loja e, em cascata (FK), todos os produtos dela — se algum já
+// tiver pedido vinculado (order_items é ON DELETE RESTRICT), o Postgres
+// recusa a operação inteira e o erro sobe pra tela.
+export function deleteStore(client: Client, storeId: string) {
+  return client.from("stores").delete().eq("id", storeId);
+}
