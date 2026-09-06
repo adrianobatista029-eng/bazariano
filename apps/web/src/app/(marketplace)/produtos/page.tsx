@@ -4,6 +4,7 @@ import { listActiveStories, listProductsBySeller } from "@marketplace/supabase/q
 import { StoriesTray, type StoryGroup } from "./stories-tray";
 import { NearbyProductGrid } from "./nearby-product-grid";
 import { BannerCarousel } from "./banner-carousel";
+import { PromoVideo } from "./promo-video";
 
 type StoryRow = {
   id: string;
@@ -104,7 +105,14 @@ export default async function ProdutosPage({
           <div className="absolute right-0 top-0 h-full w-64 rounded-full bg-brand/10 blur-3xl" />
         </section>
       ) : (
-        <BannerCarousel />
+        <div className="flex flex-col gap-4 md:flex-row">
+          <div className="min-w-0 md:w-1/2">
+            <BannerCarousel />
+          </div>
+          <div className="min-w-0 md:w-1/2">
+            <PromoVideo />
+          </div>
+        </div>
       )}
 
       {!searchParams.q && (

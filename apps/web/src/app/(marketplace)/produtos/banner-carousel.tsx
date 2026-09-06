@@ -117,7 +117,7 @@ export function BannerCarousel() {
   const banner = BANNERS[index] ?? BANNERS[0];
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border border-border shadow-lg md:w-1/2">
+    <div className="relative w-full overflow-hidden rounded-2xl border border-border shadow-lg">
       <style>{`
         @keyframes bc-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.85; } }
         @keyframes bc-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
