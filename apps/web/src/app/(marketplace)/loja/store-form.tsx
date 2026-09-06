@@ -119,9 +119,16 @@ export function StoreForm({
               setSlug(e.target.value);
             }}
             placeholder="loja-do-joao"
-            className="flex-1 rounded-lg border border-border bg-secondary px-3 py-1.5 text-foreground"
+            disabled={!!existingStore}
+            readOnly={!!existingStore}
+            className="flex-1 rounded-lg border border-border bg-secondary px-3 py-1.5 text-foreground disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
+        {existingStore && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            O endereço não pode ser trocado depois de criado — já está tudo conectado a ele.
+          </p>
+        )}
       </div>
 
       <div>
