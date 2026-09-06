@@ -12,7 +12,7 @@ import { LISTING_TYPES, categoryDomain } from "@/lib/listing-type";
 // imóvel), cada um só com as categorias do seu próprio domínio. Clicar numa
 // categoria expande as subcategorias dela logo abaixo (só uma expandida por
 // vez); clicar numa subcategoria filtra por ela.
-export function CategoryMenu() {
+export function CategoryMenu({ variant = "icon" }: { variant?: "icon" | "text" }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -49,27 +49,46 @@ export function CategoryMenu() {
 
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        title="Categorias"
-        aria-label="Categorias"
-        className="flex flex-col items-center gap-0.5"
-      >
-        <span
-          className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors hover:border-brand md:h-12 md:w-12 ${
-            open ? "border-brand" : "border-border bg-secondary"
+      {variant === "text" ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 py-2.5 text-sm font-semibold transition-colors ${
+            open ? "border-brand text-brand" : "border-transparent text-foreground hover:text-brand"
           }`}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/categories-icon.png" alt="" className="icon-crisp h-5 w-5 md:h-8 md:w-8" />
-        </span>
-        <span className={`text-[10px] font-medium ${open ? "text-brand" : "text-muted-foreground"}`}>
           Categorias
-        </span>
-      </button>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          title="Categorias"
+          aria-label="Categorias"
+          className="flex flex-col items-center gap-0.5"
+        >
+          <span
+            className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors hover:border-brand md:h-12 md:w-12 ${
+              open ? "border-brand" : "border-border bg-secondary"
+            }`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/categories-icon.png" alt="" className="icon-crisp h-5 w-5 md:h-8 md:w-8" />
+          </span>
+          <span className={`text-[10px] font-medium ${open ? "text-brand" : "text-muted-foreground"}`}>
+            Categorias
+          </span>
+        </button>
+      )}
       {open && (
-        <div className="fixed inset-x-4 top-20 z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-elevated md:absolute md:inset-x-auto md:right-0 md:top-auto md:mt-2 md:w-80">
+        <div
+          className={`fixed inset-x-4 top-20 z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-elevated md:absolute md:inset-x-auto md:top-auto md:mt-2 md:w-80 ${
+            variant === "text" ? "md:left-0" : "md:right-0"
+          }`}
+        >
           {categories.length === 0 && (
             <p className="text-sm text-muted-foreground">Carregando categorias...</p>
           )}

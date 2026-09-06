@@ -130,138 +130,133 @@ export function MarketplaceShell({
     ? [...NAV_ITEMS, { href: "/admin", label: "Admin", icon: "🛠️" }]
     : NAV_ITEMS;
 
-  const sidebarContent = (
+  // Ícones+busca do topo: aparecem sempre no desktop (linha 1 do header) e só
+  // em /produtos no mobile (nas outras telas, o mobile usa a bolha
+  // flutuante — não mexe nisso).
+  const topActions = (
     <>
-      <Link href="/produtos" className="flex items-center p-3">
+      <ThemeToggle size="h-9 w-9 text-lg md:h-11 md:w-11 md:text-xl" />
+      <button
+        onClick={() => setCartOpen(true)}
+        title="Carrinho"
+        aria-label="Carrinho"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand md:h-11 md:w-11"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-9 w-auto" />
-      </Link>
-
-      <nav className="flex flex-col gap-2">
-        {NAV_ITEMS.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={
-                active
-                  ? "flex items-center gap-3 rounded-xl bg-primary p-3 font-medium text-primary-foreground shadow-md"
-                  : "flex items-center gap-3 rounded-xl p-3 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              }
-            >
-              <span
-                className={`flex h-10 w-10 items-center justify-center text-3xl ${
-                  item.whiteBg ? "rounded-full bg-white" : ""
-                }`}
-              >
-                <NavIcon icon={item.icon} className="h-10 w-10" />
-              </span>{" "}
-              {item.label}
-            </Link>
-          );
-        })}
-        {isAdmin && (
-          <Link
-            href="/admin"
-            className="flex items-center gap-3 rounded-xl p-3 text-brand transition-colors hover:bg-secondary"
-          >
-            <span className="flex h-10 w-10 items-center justify-center text-3xl">🛠️</span> Admin
-          </Link>
+        <img src="/carrinho-de-compras.png" alt="" className="icon-crisp h-5 w-5 md:h-6 md:w-6" />
+        {itemCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground">
+            {itemCount}
+          </span>
         )}
-      </nav>
+      </button>
+      {isLoggedIn ? (
+        <button
+          onClick={() => setProfileOpen(true)}
+          title="Minha conta"
+          aria-label="Minha conta"
+          className="flex items-center gap-2 rounded-full border border-border bg-secondary py-1 pl-1 pr-1 text-foreground transition-colors hover:border-brand hover:text-brand md:pr-3"
+        >
+          <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-bold text-primary-foreground md:h-8 md:w-8">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            ) : (
+              (displayName || "?").charAt(0).toUpperCase()
+            )}
+          </span>
+          <span className="hidden text-sm font-medium md:inline">{displayName}</span>
+        </button>
+      ) : (
+        <Link
+          href="/login"
+          className="whitespace-nowrap rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-glow md:px-5 md:py-2 md:text-base"
+        >
+          Entrar
+        </Link>
+      )}
     </>
   );
 
+  const searchForm = (
+    <form onSubmit={handleSearch} className="relative w-full md:max-w-xl md:flex-1">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Buscar produtos no Bazariano..."
+        className="w-full rounded-full border border-border bg-secondary px-6 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring md:py-2.5"
+      />
+    </form>
+  );
+
   return (
-    <div className="flex min-h-screen overflow-hidden bg-background text-foreground">
-      {/* Sidebar (desktop) */}
-      <aside className="hidden w-64 shrink-0 flex-col gap-8 border-r border-border bg-card/40 p-6 shadow-xl backdrop-blur-md md:flex">
-        {sidebarContent}
-      </aside>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header (desktop): logo + busca + conta numa linha, links de texto
+          na linha de baixo — estilo grande e-commerce, sem ícone grande de
+          sidebar. Sempre visível, em qualquer página. */}
+      <header className="sticky top-0 z-30 hidden border-b border-border bg-card/60 backdrop-blur-md md:block">
+        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
+          <Link href="/produtos" className="flex shrink-0 items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-8 w-auto" />
+          </Link>
+          {searchForm}
+          <div className="ml-auto flex shrink-0 items-center gap-3">{topActions}</div>
+        </div>
+        <nav className="mx-auto flex max-w-6xl items-center gap-6 overflow-x-auto px-6">
+          <CategoryMenu variant="text" />
+          <span className="h-3.5 w-px shrink-0 bg-border" />
+          {NAV_ITEMS.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`whitespace-nowrap border-b-2 py-2.5 text-sm font-semibold transition-colors ${
+                  active
+                    ? "border-brand text-brand"
+                    : "border-transparent text-foreground hover:text-brand"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`whitespace-nowrap border-b-2 py-2.5 text-sm font-semibold transition-colors ${
+                pathname === "/admin"
+                  ? "border-brand text-brand"
+                  : "border-transparent text-foreground hover:text-brand"
+              }`}
+            >
+              Admin
+            </Link>
+          )}
+        </nav>
+      </header>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <header className="mb-4 flex flex-wrap items-center gap-4 md:mb-5">
+      <main className="mx-auto max-w-6xl p-4 md:p-8">
+        <div className="mb-4 flex flex-wrap items-center gap-4 md:hidden">
           {pathname === "/produtos" && (
             <>
-              <Link href="/produtos" className="order-1 flex shrink-0 items-center md:hidden">
+              <Link href="/produtos" className="order-1 flex shrink-0 items-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-5 w-auto" />
               </Link>
 
-              <div className="order-2 ml-auto flex items-center gap-3 md:order-3 md:gap-4">
-                  <CategoryMenu />
-                  <ThemeToggle size="h-9 w-9 text-lg md:h-12 md:w-12 md:text-2xl" />
-                  <button
-                    onClick={() => setCartOpen(true)}
-                    title="Carrinho"
-                    aria-label="Carrinho"
-                    className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand md:h-12 md:w-12"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/carrinho-de-compras.png" alt="" className="icon-crisp h-5 w-5 md:h-8 md:w-8" />
-                    {itemCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground">
-                        {itemCount}
-                      </span>
-                    )}
-                  </button>
-                  {isLoggedIn ? (
-                    <button
-                      onClick={() => setProfileOpen(true)}
-                      title="Minha conta"
-                      aria-label="Minha conta"
-                      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-secondary text-foreground transition-colors hover:border-brand hover:text-brand md:h-12 md:w-12"
-                    >
-                      {avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={avatarUrl}
-                          alt={displayName}
-                          className="h-full w-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="icon-crisp h-5 w-5 md:h-7 md:w-7"
-                        >
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                      )}
-                    </button>
-                  ) : (
-                    <Link
-                      href="/login"
-                      className="whitespace-nowrap rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-glow md:px-5 md:py-2 md:text-base"
-                    >
-                      Entrar
-                    </Link>
-                  )}
-                </div>
+              <div className="order-2 ml-auto flex items-center gap-3">
+                <CategoryMenu />
+                {topActions}
+              </div>
 
-              <form
-                onSubmit={handleSearch}
-                className="relative order-3 w-full md:order-none md:w-auto md:flex-1 md:max-w-xl"
-              >
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar produtos no Bazariano..."
-                  className="w-full rounded-full border border-border bg-secondary px-6 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </form>
+              <div className="order-3 w-full">{searchForm}</div>
             </>
           )}
-        </header>
+        </div>
 
         {showWelcomeBanner && (
           <button
