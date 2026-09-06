@@ -131,11 +131,11 @@ export function BannerCarousel() {
 
       <Link
         href={banner.href}
-        className="flex aspect-[24/5] w-full items-center justify-between gap-3 px-5 sm:aspect-[5/1] sm:px-8"
+        className="flex aspect-[24/5] w-full items-center justify-center gap-3 px-5 sm:aspect-[5/1] sm:gap-6 sm:px-8"
         style={{ background: banner.gradient }}
       >
         <div className="flex min-w-0 flex-col gap-1 text-white sm:gap-1.5">
-          <h3 className="font-display text-base font-extrabold leading-tight drop-shadow-sm sm:text-xl md:text-2xl">
+          <h3 className="font-display text-xl font-extrabold leading-tight drop-shadow-sm sm:text-3xl md:text-4xl">
             {banner.title}
           </h3>
           <p className="hidden text-xs text-white/85 sm:block sm:text-sm">
