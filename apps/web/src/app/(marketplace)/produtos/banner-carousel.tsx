@@ -134,15 +134,15 @@ export function BannerCarousel() {
         className="flex aspect-[24/5] w-full items-center justify-between gap-3 px-5 sm:aspect-[5/1] sm:px-8"
         style={{ background: banner.gradient }}
       >
-        <div className="flex min-w-0 flex-col gap-1 text-white sm:gap-1.5">
-          <h3 className="font-display text-xl font-extrabold leading-tight drop-shadow-sm sm:text-3xl md:text-4xl">
+        <div className="flex min-w-0 flex-col gap-1 text-white sm:gap-2">
+          <h3 className="font-display text-xl font-extrabold leading-tight drop-shadow-sm sm:text-3xl md:text-4xl lg:text-5xl">
             {banner.title}
           </h3>
-          <p className="hidden text-xs text-white/85 sm:block sm:text-sm">
+          <p className="hidden text-xs text-white/85 sm:block sm:text-sm lg:text-base">
             {banner.subtitle}
           </p>
           <span
-            className="mt-1 w-fit rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-md sm:px-3.5 sm:py-1.5 sm:text-xs"
+            className="mt-1 w-fit rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-md sm:px-3.5 sm:py-1.5 sm:text-xs lg:px-5 lg:py-2 lg:text-sm"
             style={{ backgroundColor: banner.accent }}
           >
             {banner.cta}
@@ -150,7 +150,7 @@ export function BannerCarousel() {
         </div>
 
         <div
-          className={`shrink-0 text-3xl leading-none sm:text-5xl md:text-6xl ${banner.anim}`}
+          className={`shrink-0 text-3xl leading-none sm:text-5xl md:text-6xl lg:text-7xl ${banner.anim}`}
           aria-hidden
         >
           {banner.icon}
