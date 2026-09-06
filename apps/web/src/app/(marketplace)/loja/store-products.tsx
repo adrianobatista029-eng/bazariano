@@ -12,6 +12,7 @@ import {
 } from "@marketplace/supabase/queries";
 import type { Database } from "@marketplace/supabase";
 import { formatPriceCents } from "@/lib/format";
+import { PriceInput } from "@/lib/price-input";
 
 type Product = Database["public"]["Tables"]["products"]["Row"] & {
   product_media: Database["public"]["Tables"]["product_media"]["Row"][];
@@ -32,6 +33,7 @@ export function StoreProducts({
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function handleMove(product: Product, direction: "up" | "down") {
@@ -65,52 +67,70 @@ export function StoreProducts({
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {products
           .sort((a, b) => a.position - b.position)
-          .map((product, index) => (
-            <div
-              key={product.id}
-              className="flex flex-col gap-2 rounded-2xl border border-border bg-card/30 p-3 shadow-lg"
-            >
-              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
-                {product.product_media[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={product.product_media[0].url}
-                    alt={product.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-full w-full items-center justify-center text-3xl">📦</span>
-                )}
+          .map((product, index) =>
+            editingId === product.id ? (
+              <EditPriceCard
+                key={product.id}
+                product={product}
+                onDone={() => {
+                  setEditingId(null);
+                  router.refresh();
+                }}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <div
+                key={product.id}
+                className="flex flex-col gap-2 rounded-2xl border border-border bg-card/30 p-3 shadow-lg"
+              >
+                <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
+                  {product.product_media[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.product_media[0].url}
+                      alt={product.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center text-3xl">📦</span>
+                  )}
+                </div>
+                <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h3>
+                <p className="text-sm text-brand">{formatPriceCents(product.price_cents)}</p>
+                <div className="mt-auto flex items-center gap-2">
+                  <button
+                    onClick={() => handleMove(product, "up")}
+                    disabled={index === 0 || busyId === product.id}
+                    className="rounded-lg bg-secondary px-2 py-1.5 text-sm disabled:opacity-30"
+                    aria-label="Mover para cima"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => handleMove(product, "down")}
+                    disabled={index === products.length - 1 || busyId === product.id}
+                    className="rounded-lg bg-secondary px-2 py-1.5 text-sm disabled:opacity-30"
+                    aria-label="Mover para baixo"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => setEditingId(product.id)}
+                    className="rounded-lg bg-secondary px-2 py-1.5 text-xs font-medium text-foreground"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleRemove(product.id)}
+                    disabled={busyId === product.id}
+                    className="ml-auto rounded-lg bg-destructive/10 px-2 py-1.5 text-xs font-medium text-destructive disabled:opacity-50"
+                  >
+                    Remover
+                  </button>
+                </div>
               </div>
-              <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h3>
-              <p className="text-sm text-brand">{formatPriceCents(product.price_cents)}</p>
-              <div className="mt-auto flex items-center gap-2">
-                <button
-                  onClick={() => handleMove(product, "up")}
-                  disabled={index === 0 || busyId === product.id}
-                  className="rounded-lg bg-secondary px-2 py-1.5 text-sm disabled:opacity-30"
-                  aria-label="Mover para cima"
-                >
-                  ↑
-                </button>
-                <button
-                  onClick={() => handleMove(product, "down")}
-                  disabled={index === products.length - 1 || busyId === product.id}
-                  className="rounded-lg bg-secondary px-2 py-1.5 text-sm disabled:opacity-30"
-                  aria-label="Mover para baixo"
-                >
-                  ↓
-                </button>
-                <button
-                  onClick={() => handleRemove(product.id)}
-                  disabled={busyId === product.id}
-                  className="ml-auto rounded-lg bg-destructive/10 px-2 py-1.5 text-xs font-medium text-destructive disabled:opacity-50"
-                >
-                  Remover
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          )}
 
         <AddProductCard
           ownerId={ownerId}
@@ -121,6 +141,85 @@ export function StoreProducts({
         />
       </div>
     </div>
+  );
+}
+
+// Mesma regra de "meus anúncios": depois de criado, o produto não pode
+// mais ser editado — só o preço, e só pra baixo (nunca pra cima), pra não
+// enganar quem já viu o preço anunciado antes.
+function EditPriceCard({
+  product,
+  onDone,
+  onCancel,
+}: {
+  product: Product;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const originalPriceCents = product.price_cents;
+  const [priceCents, setPriceCents] = useState(originalPriceCents);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (!priceCents || priceCents <= 0) {
+      setError("Informe um preço válido.");
+      return;
+    }
+    if (priceCents > originalPriceCents) {
+      setError("Você só pode baixar o preço, nunca aumentar.");
+      return;
+    }
+
+    setSaving(true);
+    const supabase = createClient();
+    const { error: updateError } = await updateProduct(supabase, product.id, { price_cents: priceCents });
+    setSaving(false);
+
+    if (updateError) {
+      setError("Não foi possível salvar agora.");
+      return;
+    }
+
+    onDone();
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-2 rounded-2xl border border-border bg-card/30 p-3 shadow-lg"
+    >
+      <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h3>
+      <p className="text-xs text-muted-foreground">
+        Preço atual: {formatPriceCents(originalPriceCents)}
+      </p>
+      <PriceInput
+        required
+        cents={priceCents}
+        onChange={setPriceCents}
+        className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm text-foreground"
+      />
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      <div className="mt-auto flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
+        >
+          {saving ? "Salvando..." : "Salvar"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-foreground"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -140,7 +239,7 @@ function AddProductCard({
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
+  const [priceCents, setPriceCents] = useState(0);
   const [stock, setStock] = useState("1");
   const [files, setFiles] = useState<File[]>([]);
   const [detailFiles, setDetailFiles] = useState<File[]>([]);
@@ -160,8 +259,7 @@ function AddProductCard({
     e.preventDefault();
     setError(null);
 
-    const priceCents = Math.round(parseFloat(price.replace(",", ".")) * 100);
-    if (!title.trim() || isNaN(priceCents) || priceCents < 0) {
+    if (!title.trim() || !priceCents || priceCents <= 0) {
       setError("Preencha nome e preço válidos.");
       return;
     }
@@ -213,7 +311,7 @@ function AddProductCard({
     setAdding(false);
     setTitle("");
     setDescription("");
-    setPrice("");
+    setPriceCents(0);
     setStock("1");
     setFiles([]);
     setDetailFiles([]);
@@ -245,11 +343,11 @@ function AddProductCard({
           placeholder="Nome do produto"
           className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
         />
-        <input
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
+        <PriceInput
+          required
+          cents={priceCents}
+          onChange={setPriceCents}
           placeholder="Preço (ex: 49,90)"
-          inputMode="decimal"
           className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
         />
       </div>
