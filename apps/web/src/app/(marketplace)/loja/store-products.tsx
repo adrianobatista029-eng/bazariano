@@ -190,7 +190,7 @@ function EditPriceCard({
     >
       <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h3>
       <p className="text-xs text-muted-foreground">
-        Preço atual: {formatPriceCents(originalPriceCents)}
+        Preço atual: {formatPriceCents(originalPriceCents)} · Estoque: {product.stock}
       </p>
       <PriceInput
         required
@@ -356,10 +356,12 @@ function AddProductCard({
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <input
+          required
+          type="number"
+          min={0}
           value={stock}
           onChange={(e) => setStock(e.target.value)}
           placeholder="Estoque"
-          inputMode="numeric"
           className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
         />
         <div>
