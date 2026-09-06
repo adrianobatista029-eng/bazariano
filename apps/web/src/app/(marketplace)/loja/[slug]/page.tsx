@@ -13,7 +13,9 @@ export default async function LojaPublicaPage({ params }: { params: { slug: stri
   if (!store) notFound();
 
   const { data: products } = await listProductsBySeller(supabase, store.id);
-  const activeProducts = (products ?? []).filter((p) => p.status === "active");
+  // Só entra na loja o que o vendedor escolheu colocar lá — Meus Anúncios
+  // continua sendo a lista completa dele, independente disso.
+  const activeProducts = (products ?? []).filter((p) => p.status === "active" && p.in_store);
 
   return (
     <div>

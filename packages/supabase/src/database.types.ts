@@ -210,6 +210,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          in_store: boolean
           price_cents: number
           seller_id: string
           status: string
@@ -221,6 +222,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          in_store?: boolean
           price_cents: number
           seller_id: string
           status?: string
@@ -232,6 +234,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          in_store?: boolean
           price_cents?: number
           seller_id?: string
           status?: string
