@@ -86,7 +86,9 @@ export default async function ProductPage({ params }: { params: { id: string } }
   let myActiveProducts: { id: string; title: string; price_cents: number }[] = [];
   if (user && !isOwnProduct) {
     const { data } = await listProductsBySeller(supabase, user.id);
-    myActiveProducts = (data ?? []).filter((p) => p.status === "active");
+    // Produto de loja não entra em troca (nem como alvo, nem oferecido) —
+    // é uma vitrine de venda direta, não um item avulso pra escambo.
+    myActiveProducts = (data ?? []).filter((p) => p.status === "active" && !p.store_id);
   }
 
   return (
@@ -163,7 +165,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
             {isProduto ? (
               <>
                 <AddToCartButton product={product} isOwnProduct={isOwnProduct} />
-                {user && !isOwnProduct && (
+                {user && !isOwnProduct && !product.store_id && (
                   <TradeOfferButton
                     listingProduct={{ id: product.id, title: product.title, price_cents: product.price_cents }}
                     sellerId={product.seller_id}
