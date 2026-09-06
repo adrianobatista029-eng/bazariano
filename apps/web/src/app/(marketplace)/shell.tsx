@@ -239,7 +239,7 @@ export function MarketplaceShell({
       </header>
 
       {/* Main content */}
-      <main className="p-4 md:p-8">
+      <main className="px-4 pb-4 pt-2 md:px-8 md:pb-8 md:pt-3">
         <div className="mb-4 flex flex-wrap items-center gap-4 md:hidden">
           {pathname === "/produtos" && (
             <>
