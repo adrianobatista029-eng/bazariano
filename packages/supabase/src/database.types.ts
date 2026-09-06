@@ -179,6 +179,7 @@ export type Database = {
           id: string
           position: number
           product_id: string
+          section: string
           type: string
           url: string
         }
@@ -187,6 +188,7 @@ export type Database = {
           id?: string
           position?: number
           product_id: string
+          section?: string
           type: string
           url: string
         }
@@ -195,6 +197,7 @@ export type Database = {
           id?: string
           position?: number
           product_id?: string
+          section?: string
           type?: string
           url?: string
         }
@@ -217,6 +220,7 @@ export type Database = {
           position: number
           price_cents: number
           seller_id: string
+          specs: Json
           status: string
           stock: number
           title: string
@@ -230,6 +234,7 @@ export type Database = {
           position?: number
           price_cents: number
           seller_id: string
+          specs?: Json
           status?: string
           stock?: number
           title: string
@@ -243,6 +248,7 @@ export type Database = {
           position?: number
           price_cents?: number
           seller_id?: string
+          specs?: Json
           status?: string
           stock?: number
           title?: string

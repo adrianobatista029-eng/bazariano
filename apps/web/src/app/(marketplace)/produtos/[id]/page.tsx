@@ -16,6 +16,7 @@ import { ProductGallery } from "./product-gallery";
 import { SellerBadge } from "./seller-badge";
 import { TradeOfferButton } from "./trade-offer-button";
 import { ProductComments } from "./product-comments";
+import { ProductExtraDetails } from "./product-extra-details";
 import { NearbyProductGrid } from "../nearby-product-grid";
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
@@ -94,7 +95,10 @@ export default async function ProductPage({ params }: { params: { id: string } }
   return (
     <div className="flex flex-col gap-10">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        <ProductGallery media={product.product_media} title={product.title} />
+        <ProductGallery
+          media={product.product_media.filter((m) => m.section !== "details")}
+          title={product.title}
+        />
         <div>
           <h1 className="font-display text-2xl font-semibold text-foreground">{product.title}</h1>
           {productExtra.original_price_cents > product.price_cents && (
@@ -198,6 +202,8 @@ export default async function ProductPage({ params }: { params: { id: string } }
           </div>
         </div>
       </div>
+
+      <ProductExtraDetails specs={product.specs} media={product.product_media} />
 
       <ProductComments
         productId={product.id}

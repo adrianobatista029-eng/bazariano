@@ -143,8 +143,18 @@ function AddProductCard({
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("1");
   const [files, setFiles] = useState<File[]>([]);
+  const [detailFiles, setDetailFiles] = useState<File[]>([]);
+  const [specs, setSpecs] = useState<{ label: string; value: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function updateSpec(index: number, field: "label" | "value", value: string) {
+    setSpecs((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+  }
+
+  function removeSpec(index: number) {
+    setSpecs((prev) => prev.filter((_, i) => i !== index));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -163,6 +173,8 @@ function AddProductCard({
     setSaving(true);
     const supabase = createClient();
 
+    const cleanSpecs = specs.filter((s) => s.label.trim() && s.value.trim());
+
     const { data: product, error: createError } = await createProduct(supabase, {
       seller_id: ownerId,
       title: title.trim(),
@@ -171,6 +183,7 @@ function AddProductCard({
       stock: parseInt(stock, 10) || 1,
       store_id: storeId,
       position: nextPosition,
+      specs: cleanSpecs,
     });
 
     if (createError || !product) {
@@ -184,7 +197,13 @@ function AddProductCard({
       const path = productMediaStoragePath(ownerId, product.id, file.name, i);
       const { url, error: uploadError } = await uploadProductMedia(supabase, path, file);
       if (uploadError || !url) continue;
-      mediaRows.push({ product_id: product.id, url, type: "photo" as const, position: i });
+      mediaRows.push({ product_id: product.id, url, type: "photo" as const, position: i, section: "gallery" as const });
+    }
+    for (const [i, file] of detailFiles.entries()) {
+      const path = productMediaStoragePath(ownerId, product.id, file.name, files.length + i);
+      const { url, error: uploadError } = await uploadProductMedia(supabase, path, file);
+      if (uploadError || !url) continue;
+      mediaRows.push({ product_id: product.id, url, type: "photo" as const, position: i, section: "details" as const });
     }
     if (mediaRows.length > 0) {
       await createProductMedia(supabase, mediaRows);
@@ -197,6 +216,8 @@ function AddProductCard({
     setPrice("");
     setStock("1");
     setFiles([]);
+    setDetailFiles([]);
+    setSpecs([]);
     router.refresh();
   }
 
@@ -247,13 +268,65 @@ function AddProductCard({
           inputMode="numeric"
           className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
         />
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Fotos principais</label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+            className="text-sm text-muted-foreground"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs text-muted-foreground">
+          Mais fotos (detalhes, mostradas embaixo na página do produto)
+        </label>
         <input
           type="file"
           accept="image/*"
           multiple
-          onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          onChange={(e) => setDetailFiles(Array.from(e.target.files ?? []))}
           className="text-sm text-muted-foreground"
         />
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-xs text-muted-foreground">Especificações (opcional)</label>
+          <button
+            type="button"
+            onClick={() => setSpecs((prev) => [...prev, { label: "", value: "" }])}
+            className="text-xs font-medium text-brand"
+          >
+            + adicionar linha
+          </button>
+        </div>
+        {specs.map((spec, i) => (
+          <div key={i} className="mb-2 flex gap-2">
+            <input
+              value={spec.label}
+              onChange={(e) => updateSpec(i, "label", e.target.value)}
+              placeholder="Ex: Material"
+              className="flex-1 rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm text-foreground"
+            />
+            <input
+              value={spec.value}
+              onChange={(e) => updateSpec(i, "value", e.target.value)}
+              placeholder="Ex: Algodão"
+              className="flex-1 rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm text-foreground"
+            />
+            <button
+              type="button"
+              onClick={() => removeSpec(i)}
+              className="rounded-lg bg-destructive/10 px-2 text-xs text-destructive"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
