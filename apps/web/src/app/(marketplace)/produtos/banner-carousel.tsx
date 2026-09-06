@@ -117,7 +117,7 @@ export function BannerCarousel() {
   const banner = BANNERS[index] ?? BANNERS[0];
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border shadow-lg">
+    <div className="relative w-full overflow-hidden rounded-2xl border border-border shadow-lg md:w-1/2">
       <style>{`
         @keyframes bc-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.85; } }
         @keyframes bc-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
@@ -131,18 +131,18 @@ export function BannerCarousel() {
 
       <Link
         href={banner.href}
-        className="flex aspect-[7/2] w-full items-center justify-between gap-4 px-6 sm:px-10 md:px-14"
+        className="flex aspect-[12/5] w-full items-center justify-between gap-3 px-5 sm:aspect-[5/2] sm:px-8"
         style={{ background: banner.gradient }}
       >
-        <div className="flex min-w-0 flex-col gap-1.5 text-white sm:gap-2">
-          <h3 className="font-display text-lg font-extrabold leading-tight drop-shadow-sm sm:text-2xl md:text-3xl">
+        <div className="flex min-w-0 flex-col gap-1 text-white sm:gap-1.5">
+          <h3 className="font-display text-base font-extrabold leading-tight drop-shadow-sm sm:text-xl md:text-2xl">
             {banner.title}
           </h3>
-          <p className="hidden text-xs text-white/85 sm:block sm:text-sm md:text-base">
+          <p className="hidden text-xs text-white/85 sm:block sm:text-sm">
             {banner.subtitle}
           </p>
           <span
-            className="mt-1 w-fit rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-md sm:px-4 sm:text-sm"
+            className="mt-1 w-fit rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-md sm:px-3.5 sm:py-1.5 sm:text-xs"
             style={{ backgroundColor: banner.accent }}
           >
             {banner.cta}
@@ -150,7 +150,7 @@ export function BannerCarousel() {
         </div>
 
         <div
-          className={`shrink-0 text-4xl leading-none sm:text-6xl md:text-7xl ${banner.anim}`}
+          className={`shrink-0 text-3xl leading-none sm:text-5xl md:text-6xl ${banner.anim}`}
           aria-hidden
         >
           {banner.icon}
