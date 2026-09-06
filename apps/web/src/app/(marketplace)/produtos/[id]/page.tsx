@@ -205,12 +205,16 @@ export default async function ProductPage({ params }: { params: { id: string } }
 
       <ProductExtraDetails specs={product.specs} media={product.product_media} />
 
-      <ProductComments
-        productId={product.id}
-        comments={comments}
-        currentUserId={user?.id ?? null}
-        isOwnProduct={isOwnProduct}
-      />
+      {/* Produto de loja não tem comentários — é vitrine de venda direta,
+          igual já vale pra troca (ver TradeOfferButton acima). */}
+      {!product.store_id && (
+        <ProductComments
+          productId={product.id}
+          comments={comments}
+          currentUserId={user?.id ?? null}
+          isOwnProduct={isOwnProduct}
+        />
+      )}
 
       {otherProducts && otherProducts.length > 0 && (
         <section>
