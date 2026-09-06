@@ -144,9 +144,9 @@ export function StoreProducts({
   );
 }
 
-// Mesma regra de "meus anúncios": depois de criado, o produto não pode
-// mais ser editado — só o preço, e só pra baixo (nunca pra cima), pra não
-// enganar quem já viu o preço anunciado antes.
+// Diferente de "meus anúncios": aqui o preço é livre pra subir ou descer
+// à vontade — só os outros campos (título, fotos, etc.) continuam sem
+// edição depois de criado.
 function EditPriceCard({
   product,
   onDone,
@@ -167,10 +167,6 @@ function EditPriceCard({
 
     if (!priceCents || priceCents <= 0) {
       setError("Informe um preço válido.");
-      return;
-    }
-    if (priceCents > originalPriceCents) {
-      setError("Você só pode baixar o preço, nunca aumentar.");
       return;
     }
 
