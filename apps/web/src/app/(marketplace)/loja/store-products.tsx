@@ -17,6 +17,49 @@ import type { Database } from "@marketplace/supabase";
 import { formatPriceCents } from "@/lib/format";
 import { PriceInput } from "@/lib/price-input";
 
+// Miniatura de cada foto escolhida (antes do upload) + texto, em vez do
+// input de arquivo cru do navegador ("Escolher arquivo" só em texto).
+function PhotoPicker({
+  label,
+  files,
+  onChange,
+}: {
+  label: string;
+  files: File[];
+  onChange: (files: File[]) => void;
+}) {
+  function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+    onChange([...files, ...Array.from(e.target.files ?? [])]);
+    e.target.value = "";
+  }
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs text-muted-foreground">{label}</label>
+      <div className="flex flex-wrap gap-2">
+        {files.map((file, i) => (
+          <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
+            <button
+              type="button"
+              onClick={() => onChange(files.filter((_, idx) => idx !== i))}
+              className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-white"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-brand hover:text-brand">
+          <span className="text-lg leading-none">+</span>
+          <span className="text-center text-[10px] leading-tight">Adicionar</span>
+          <input type="file" accept="image/*" multiple onChange={handlePick} className="hidden" />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 type Product = Database["public"]["Tables"]["products"]["Row"] & {
   product_media: Database["public"]["Tables"]["product_media"]["Row"][];
 };
@@ -302,7 +345,7 @@ function EditProductCard({
         {gallery.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
             {gallery.map((m) => (
-              <div key={m.id} className="relative h-16 w-16 overflow-hidden rounded-lg bg-muted">
+              <div key={m.id} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={m.url} alt="" className="h-full w-full object-cover" />
                 <button
@@ -316,13 +359,7 @@ function EditProductCard({
             ))}
           </div>
         )}
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => setNewFiles(Array.from(e.target.files ?? []))}
-          className="text-sm text-muted-foreground"
-        />
+        <PhotoPicker label="Adicionar mais" files={newFiles} onChange={setNewFiles} />
       </div>
 
       <div>
@@ -332,7 +369,7 @@ function EditProductCard({
         {details.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
             {details.map((m) => (
-              <div key={m.id} className="relative h-16 w-16 overflow-hidden rounded-lg bg-muted">
+              <div key={m.id} className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={m.url} alt="" className="h-full w-full object-cover" />
                 <button
@@ -346,13 +383,7 @@ function EditProductCard({
             ))}
           </div>
         )}
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => setNewDetailFiles(Array.from(e.target.files ?? []))}
-          className="text-sm text-muted-foreground"
-        />
+        <PhotoPicker label="Adicionar mais" files={newDetailFiles} onChange={setNewDetailFiles} />
       </div>
 
       <div>
@@ -558,28 +589,14 @@ function AddProductCard({
           placeholder="Estoque"
           className="rounded-lg border border-border bg-secondary px-4 py-2 text-foreground"
         />
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Fotos principais</label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-            className="text-sm text-muted-foreground"
-          />
-        </div>
+        <PhotoPicker label="Fotos principais" files={files} onChange={setFiles} />
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-muted-foreground">
-          Mais fotos (detalhes, mostradas embaixo na página do produto)
-        </label>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => setDetailFiles(Array.from(e.target.files ?? []))}
-          className="text-sm text-muted-foreground"
+        <PhotoPicker
+          label="Mais fotos (detalhes, mostradas embaixo na página do produto)"
+          files={detailFiles}
+          onChange={setDetailFiles}
         />
       </div>
 
