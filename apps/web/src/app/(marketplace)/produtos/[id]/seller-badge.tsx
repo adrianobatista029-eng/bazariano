@@ -1,10 +1,43 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import type { Database } from "@marketplace/supabase";
 import { UserProfileModal, type ProfileForModal } from "./user-profile-modal";
 
-export function SellerBadge({ seller }: { seller: ProfileForModal }) {
+type Store = Database["public"]["Tables"]["stores"]["Row"];
+
+// Produto vinculado a uma loja mostra o nome/logo dela em vez do perfil de
+// quem vendeu — é a loja que "vende" nesse caso, não a pessoa por trás.
+export function SellerBadge({ seller, store }: { seller: ProfileForModal; store: Store | null }) {
   const [open, setOpen] = useState(false);
+
+  if (store) {
+    return (
+      <Link
+        href={`/loja/${store.slug}`}
+        className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-card/30 p-3 text-left transition-colors hover:border-brand/50"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+          {store.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={store.logo_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div
+              className="flex h-full w-full items-center justify-center text-sm font-bold text-white"
+              style={{ backgroundColor: store.primary_color ?? "#f97316" }}
+            >
+              {store.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground">Vendido pela loja</p>
+          <p className="text-sm font-semibold text-foreground">{store.name}</p>
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <>

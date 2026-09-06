@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
-import { getProductById, listProductsBySeller, listProductComments } from "@marketplace/supabase/queries";
+import {
+  getProductById,
+  listProductsBySeller,
+  listProductComments,
+  getStoreById,
+} from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 import { formatPriceCents } from "@/lib/format";
 import { PRODUCT_CONDITION_LABEL } from "@/lib/product-condition";
@@ -56,6 +61,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
     { data: sellerProfile },
     { data: otherProducts },
     { data: commentsData },
+    { data: store },
   ] = await Promise.all([
     productExtra.category_id
       ? (supabase.from as any)("categories").select("name").eq("id", productExtra.category_id).single()
@@ -70,6 +76,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
     supabase.from("profiles").select("id, full_name, avatar_url, created_at").eq("id", product.seller_id).single(),
     otherProductsQuery,
     listProductComments(supabase, product.id),
+    product.store_id ? getStoreById(supabase, product.store_id) : Promise.resolve({ data: null }),
   ]);
   const categoryName: string | null = cat?.name ?? null;
   const subcategoryName: string | null = sub?.name ?? null;
@@ -151,7 +158,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
               {productExtra.city}/{productExtra.state}
             </p>
           )}
-          {sellerProfile && <SellerBadge seller={sellerProfile} />}
+          {sellerProfile && <SellerBadge seller={sellerProfile} store={store ?? null} />}
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             {isProduto ? (
               <>
