@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { listActiveStories, listProductsBySeller } from "@marketplace/supabase/queries";
 import { StoriesTray, type StoryGroup } from "./stories-tray";
 import { NearbyProductGrid } from "./nearby-product-grid";
+import { BannerCarousel } from "./banner-carousel";
 
 type StoryRow = {
   id: string;
@@ -89,28 +90,22 @@ export default async function ProdutosPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="relative flex w-fit max-w-full items-center gap-6 overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-card to-card/40 p-5 shadow-lg sm:p-7">
-        <div className="z-10">
-          <h2 className="font-display text-xl font-bold sm:text-2xl">
-            {searchParams.q ? `Resultados para "${searchParams.q}"` : "Desapegue rápido na sua região"}
-          </h2>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            {searchParams.q
-              ? `${products?.length ?? 0} produto(s) encontrado(s)`
-              : "Compre e venda com entrega rastreada em tempo real"}
-          </p>
-          {!searchParams.q && (
-            <Link
-              href="/vender"
-              className="mt-3 inline-block rounded-full bg-gradient-to-r from-brand to-primary px-6 py-2 text-sm font-bold text-primary-foreground shadow-glow transition-transform hover:scale-[1.02]"
-            >
-              Anunciar agora
-            </Link>
-          )}
-        </div>
-        <div className="z-10 text-5xl opacity-80 sm:text-6xl">🛍️</div>
-        <div className="absolute right-0 top-0 h-full w-64 rounded-full bg-brand/10 blur-3xl" />
-      </section>
+      {searchParams.q ? (
+        <section className="relative flex w-fit max-w-full items-center gap-6 overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-card to-card/40 p-5 shadow-lg sm:p-7">
+          <div className="z-10">
+            <h2 className="font-display text-xl font-bold sm:text-2xl">
+              Resultados para &quot;{searchParams.q}&quot;
+            </h2>
+            <p className="text-sm text-muted-foreground sm:text-base">
+              {products?.length ?? 0} produto(s) encontrado(s)
+            </p>
+          </div>
+          <div className="z-10 text-5xl opacity-80 sm:text-6xl">🔎</div>
+          <div className="absolute right-0 top-0 h-full w-64 rounded-full bg-brand/10 blur-3xl" />
+        </section>
+      ) : (
+        <BannerCarousel />
+      )}
 
       {!searchParams.q && (
         <StoriesTray
