@@ -18,7 +18,15 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function StoreForm({ ownerId, existingStore }: { ownerId: string; existingStore: Store | null }) {
+export function StoreForm({
+  ownerId,
+  existingStore,
+  onSaved,
+}: {
+  ownerId: string;
+  existingStore: Store | null;
+  onSaved?: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState(existingStore?.name ?? "");
   const [slug, setSlug] = useState(existingStore?.slug ?? "");
@@ -65,8 +73,8 @@ export function StoreForm({ ownerId, existingStore }: { ownerId: string; existin
     };
 
     const { error: saveError } = existingStore
-      ? await updateStore(supabase, ownerId, payload)
-      : await createStore(supabase, { id: ownerId, ...payload });
+      ? await updateStore(supabase, existingStore.id, payload)
+      : await createStore(supabase, { owner_id: ownerId, ...payload });
 
     setSaving(false);
 
@@ -79,8 +87,13 @@ export function StoreForm({ ownerId, existingStore }: { ownerId: string; existin
       return;
     }
 
-    router.push(`/loja/${cleanSlug}`);
+    // Cria (ou muda o endereço numa edição): navega pro slug novo. Edita
+    // sem trocar o endereço: só atualiza e fecha o painel no lugar.
+    if (!existingStore || existingStore.slug !== cleanSlug) {
+      router.push(`/loja/${cleanSlug}`);
+    }
     router.refresh();
+    onSaved?.();
   }
 
   return (
@@ -169,7 +182,7 @@ export function StoreForm({ ownerId, existingStore }: { ownerId: string; existin
         disabled={saving}
         className="rounded-full bg-primary px-6 py-2.5 font-medium text-primary-foreground shadow-glow disabled:opacity-60"
       >
-        {saving ? "Salvando..." : existingStore ? "Salvar alterações" : "Criar minha loja"}
+        {saving ? "Salvando..." : existingStore ? "Salvar alterações" : "Criar loja"}
       </button>
     </form>
   );

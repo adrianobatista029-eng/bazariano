@@ -17,11 +17,19 @@ type Product = Database["public"]["Tables"]["products"]["Row"] & {
   product_media: Database["public"]["Tables"]["product_media"]["Row"][];
 };
 
-// Produto criado por aqui já nasce dentro da loja (in_store: true) — não
+// Produto criado por aqui já nasce dentro desta loja (store_id) — não
 // existe conceito de "anúncio" nessa tela, é tudo vitrine da própria loja.
 // Os campos que o marketplace geral exige (condition, entrega, etc.) usam
 // os defaults do banco, que já satisfazem as regras sozinhos.
-export function StoreProducts({ ownerId, products }: { ownerId: string; products: Product[] }) {
+export function StoreProducts({
+  ownerId,
+  storeId,
+  products,
+}: {
+  ownerId: string;
+  storeId: string;
+  products: Product[];
+}) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -45,7 +53,7 @@ export function StoreProducts({ ownerId, products }: { ownerId: string; products
   async function handleRemove(productId: string) {
     setBusyId(productId);
     const supabase = createClient();
-    await updateProduct(supabase, productId, { in_store: false });
+    await updateProduct(supabase, productId, { store_id: null });
     setBusyId(null);
     router.refresh();
   }
@@ -106,6 +114,7 @@ export function StoreProducts({ ownerId, products }: { ownerId: string; products
 
         <AddProductCard
           ownerId={ownerId}
+          storeId={storeId}
           nextPosition={products.length}
           adding={adding}
           setAdding={setAdding}
@@ -117,11 +126,13 @@ export function StoreProducts({ ownerId, products }: { ownerId: string; products
 
 function AddProductCard({
   ownerId,
+  storeId,
   nextPosition,
   adding,
   setAdding,
 }: {
   ownerId: string;
+  storeId: string;
   nextPosition: number;
   adding: boolean;
   setAdding: (v: boolean) => void;
@@ -158,7 +169,7 @@ function AddProductCard({
       description: description.trim() || null,
       price_cents: priceCents,
       stock: parseInt(stock, 10) || 1,
-      in_store: true,
+      store_id: storeId,
       position: nextPosition,
     });
 

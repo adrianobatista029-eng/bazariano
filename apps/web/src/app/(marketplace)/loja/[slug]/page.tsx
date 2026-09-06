@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getStoreBySlug, listProductsBySeller } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/server";
 import { ProductCard } from "../../produtos/product-card";
+import { StoreOwnerPanel } from "./store-owner-panel";
 
 export default async function LojaPublicaPage({ params }: { params: { slug: string } }) {
   const supabase = createClient();
@@ -12,15 +13,18 @@ export default async function LojaPublicaPage({ params }: { params: { slug: stri
   const { data: store } = await getStoreBySlug(supabase, params.slug);
   if (!store) notFound();
 
-  const { data: products } = await listProductsBySeller(supabase, store.id);
-  // Só entra na loja o que o vendedor escolheu colocar lá — Meus Anúncios
-  // continua sendo a lista completa dele, independente disso.
-  const activeProducts = (products ?? [])
-    .filter((p) => p.status === "active" && p.in_store)
+  const isOwner = user?.id === store.owner_id;
+
+  const { data: sellerProducts } = await listProductsBySeller(supabase, store.owner_id);
+  const storeProducts = (sellerProducts ?? [])
+    .filter((p) => p.store_id === store.id)
     .sort((a, b) => a.position - b.position);
+  const activeProducts = storeProducts.filter((p) => p.status === "active");
 
   return (
     <div>
+      {isOwner && <StoreOwnerPanel store={store} products={storeProducts} />}
+
       {store.banner_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img

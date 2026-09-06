@@ -3,8 +3,18 @@ import type { Database } from "../database.types";
 
 type Client = SupabaseClient<Database>;
 
-export function getStoreByOwnerId(client: Client, ownerId: string) {
-  return client.from("stores").select("*").eq("id", ownerId).maybeSingle();
+export const MAX_STORES_PER_OWNER = 15;
+
+export function listStoresByOwner(client: Client, ownerId: string) {
+  return client
+    .from("stores")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: true });
+}
+
+export function getStoreById(client: Client, storeId: string) {
+  return client.from("stores").select("*").eq("id", storeId).maybeSingle();
 }
 
 export function getStoreBySlug(client: Client, slug: string) {
@@ -29,8 +39,8 @@ export function createStore(
 
 export function updateStore(
   client: Client,
-  ownerId: string,
+  storeId: string,
   patch: Database["public"]["Tables"]["stores"]["Update"]
 ) {
-  return client.from("stores").update(patch).eq("id", ownerId).select().single();
+  return client.from("stores").update(patch).eq("id", storeId).select().single();
 }

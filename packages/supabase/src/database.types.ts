@@ -17,6 +17,7 @@ export type Database = {
       stores: {
         Row: {
           id: string
+          owner_id: string
           slug: string
           name: string
           description: string | null
@@ -27,7 +28,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          id: string
+          id?: string
+          owner_id: string
           slug: string
           name: string
           description?: string | null
@@ -39,6 +41,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          owner_id?: string
           slug?: string
           name?: string
           description?: string | null
@@ -50,9 +53,9 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "stores_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
+            foreignKeyName: "stores_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -210,7 +213,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
-          in_store: boolean
+          store_id: string | null
           position: number
           price_cents: number
           seller_id: string
@@ -223,7 +226,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          in_store?: boolean
+          store_id?: string | null
           position?: number
           price_cents: number
           seller_id: string
@@ -236,7 +239,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
-          in_store?: boolean
+          store_id?: string | null
           position?: number
           price_cents?: number
           seller_id?: string
