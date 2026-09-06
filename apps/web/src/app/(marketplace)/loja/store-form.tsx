@@ -82,7 +82,7 @@ export function StoreForm({
       setError(
         saveError.message.includes("duplicate") || saveError.message.includes("unique")
           ? "Esse endereço de loja já está em uso — escolha outro."
-          : "Não foi possível salvar a loja agora."
+          : `Não foi possível salvar a loja agora: ${saveError.message}`
       );
       return;
     }
