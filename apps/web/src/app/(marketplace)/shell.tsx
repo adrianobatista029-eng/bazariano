@@ -204,7 +204,7 @@ export function MarketplaceShell({
           {searchForm}
           <div className="ml-auto flex shrink-0 items-center gap-3">{topActions}</div>
         </div>
-        <nav className="flex items-center gap-6 overflow-x-auto px-6">
+        <nav className="flex flex-wrap items-center gap-x-6 gap-y-1 px-6">
           <CategoryMenu variant="text" />
           <span className="h-3.5 w-px shrink-0 bg-border" />
           {NAV_ITEMS.map((item) => {
