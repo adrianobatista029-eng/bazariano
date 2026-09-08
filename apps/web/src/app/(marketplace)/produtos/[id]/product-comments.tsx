@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createProductComment,
@@ -31,12 +31,21 @@ export function ProductComments({
   isOwnProduct: boolean;
 }) {
   const router = useRouter();
+  const [localComments, setLocalComments] = useState(comments);
   const [body, setBody] = useState("");
   const [posting, setPosting] = useState(false);
+  const [isRefreshing, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<ProfileForModal | null>(null);
+
+  // O router.refresh() traz `comments` atualizado do server component
+  // (ex.: com o comentário novo já com o perfil do autor resolvido) —
+  // sincroniza o estado local sempre que isso mudar.
+  useEffect(() => {
+    setLocalComments(comments);
+  }, [comments]);
 
   async function handlePost() {
     if (!currentUserId) return;
@@ -50,13 +59,17 @@ export function ProductComments({
       author_id: currentUserId,
       body: trimmed,
     });
-    setPosting(false);
     if (insertError) {
+      setPosting(false);
       setError("Não foi possível enviar o comentário.");
       return;
     }
     setBody("");
-    router.refresh();
+    // router.refresh() traz o comentário novo (com o perfil do autor já
+    // resolvido pelo server component) — mantém "posting" até ele terminar
+    // pra não parecer que o clique não fez nada.
+    startTransition(() => router.refresh());
+    setPosting(false);
   }
 
   async function confirmDelete() {
@@ -69,6 +82,9 @@ export function ProductComments({
       setError("Não foi possível apagar o comentário.");
       return;
     }
+    // Some da lista na hora — não precisa esperar o refresh do server pra
+    // refletir a exclusão, já sabemos o resultado.
+    setLocalComments((current) => current.filter((c) => c.id !== deleteTarget));
     setDeleteTarget(null);
     router.refresh();
   }
@@ -76,7 +92,7 @@ export function ProductComments({
   return (
     <section className="mt-6 border-t border-border pt-6">
       <h3 className="mb-3 text-lg font-bold text-foreground">
-        Comentários {comments.length > 0 && `(${comments.length})`}
+        Comentários {localComments.length > 0 && `(${localComments.length})`}
       </h3>
 
       {currentUserId ? (
@@ -90,7 +106,7 @@ export function ProductComments({
           />
           <button
             onClick={handlePost}
-            disabled={posting || !body.trim()}
+            disabled={posting || isRefreshing || !body.trim()}
             className="rounded-lg bg-gradient-to-r from-brand to-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow disabled:cursor-not-allowed disabled:opacity-50"
           >
             Enviar
@@ -107,11 +123,11 @@ export function ProductComments({
 
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
-      {comments.length === 0 ? (
+      {localComments.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhum comentário ainda.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {comments.map((c) => {
+          {localComments.map((c) => {
             const isOwnComment = c.author_id === currentUserId;
             const canOpenProfile = !isOwnComment && !!c.profiles;
             const avatar = (

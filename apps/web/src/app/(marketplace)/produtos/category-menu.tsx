@@ -7,6 +7,19 @@ import { listCategoriesWithSubcategories } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
 import { LISTING_TYPES, categoryDomain } from "@/lib/listing-type";
 
+// O header monta duas instâncias deste componente ao mesmo tempo (variant
+// "text" no desktop, "icon" no mobile) — sem cache elas disparariam duas
+// consultas idênticas a cada carregamento de página. Módulo compartilhado
+// entre as instâncias: a primeira que montar dispara a busca, a segunda
+// reaproveita a mesma promise.
+let categoriesPromise: ReturnType<typeof listCategoriesWithSubcategories> | null = null;
+function fetchCategoriesOnce() {
+  if (!categoriesPromise) {
+    categoriesPromise = listCategoriesWithSubcategories(createClient());
+  }
+  return categoriesPromise;
+}
+
 // Botão de categorias no cabeçalho, ao lado do toggle de tema — abre uma
 // lista organizada por tipo de anúncio (produto, serviço, aluguel, venda de
 // imóvel), cada um só com as categorias do seu próprio domínio. Clicar numa
@@ -21,11 +34,15 @@ export function CategoryMenu({ variant = "icon" }: { variant?: "icon" | "text" }
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    listCategoriesWithSubcategories(supabase).then(({ categories: cats, subcategories: subs }) => {
+    let cancelled = false;
+    fetchCategoriesOnce().then(({ categories: cats, subcategories: subs }) => {
+      if (cancelled) return;
       setCategories(cats);
       setSubcategories(subs);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

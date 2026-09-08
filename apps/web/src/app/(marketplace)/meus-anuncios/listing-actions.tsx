@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateProduct, deleteProductCompletely } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
@@ -20,22 +20,27 @@ export function ListingActions({
   canDelete?: boolean;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [mutating, setMutating] = useState(false);
+  const [isRefreshing, startTransition] = useTransition();
   const [dialog, setDialog] = useState<Dialog>(null);
+  // Continua "carregando" até o router.refresh() terminar de trazer os
+  // dados novos — sem isso o botão reabilitava antes da tela atualizar,
+  // dando uma sensação de trava (clicou e "não aconteceu nada").
+  const loading = mutating || isRefreshing;
 
   async function setStatus(next: "active" | "paused" | "removed") {
-    setLoading(true);
+    setMutating(true);
     const supabase = createClient();
     await updateProduct(supabase, productId, { status: next });
-    setLoading(false);
-    router.refresh();
+    setMutating(false);
+    startTransition(() => router.refresh());
   }
 
   async function confirmDelete() {
-    setLoading(true);
+    setMutating(true);
     const supabase = createClient();
     const result = await deleteProductCompletely(supabase, productId);
-    setLoading(false);
+    setMutating(false);
 
     if (result.blocked) {
       setDialog({
@@ -51,7 +56,7 @@ export function ListingActions({
       return;
     }
     setDialog(null);
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   const dialogOverlay =

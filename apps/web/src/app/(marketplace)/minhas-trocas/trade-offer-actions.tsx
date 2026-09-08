@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { respondToTradeOffer } from "@marketplace/supabase/queries";
 import { createClient } from "@/lib/supabase/client";
@@ -18,20 +18,22 @@ export function TradeOfferActions({
   const [countering, setCountering] = useState(false);
   const [cashInput, setCashInput] = useState((cashAdjustmentCents / 100).toFixed(2).replace(".", ","));
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [mutating, setMutating] = useState(false);
+  const [isRefreshing, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const loading = mutating || isRefreshing;
 
   async function act(patch: Parameters<typeof respondToTradeOffer>[2]) {
-    setLoading(true);
+    setMutating(true);
     setError(null);
     const supabase = createClient();
     const { error: updateError } = await respondToTradeOffer(supabase, offerId, patch);
-    setLoading(false);
+    setMutating(false);
     if (updateError) {
       setError(updateError.message);
       return;
     }
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   if (countering) {

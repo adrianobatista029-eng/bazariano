@@ -75,62 +75,80 @@ export function CartPanel({
     // Reserva o estoque de todo o carrinho antes de criar qualquer pedido —
     // se algum item não tiver estoque suficiente (ex: outro comprador levou
     // primeiro), desfaz as reservas já feitas nesta tentativa e cancela tudo
-    // sem criar pedido nenhum.
-    const reserved = new Map<string, number>();
-    for (const item of items) {
-      const result = await adjustProductStock(supabase, item.product.id, -item.quantity);
-      if (!result.ok) {
-        // Devolve só o que foi reservado até agora nesta tentativa — nenhum
-        // pedido foi criado ainda, então é seguro desfazer tudo.
-        for (const [productId, quantity] of reserved) {
-          await adjustProductStock(supabase, productId, quantity);
-        }
-        setError(`"${item.product.title}": ${result.error}`);
-        setLoading(false);
-        return;
-      }
-      reserved.set(item.product.id, item.quantity);
-    }
-
-    const createdOrderIds: string[] = [];
-
-    for (const [sellerId, groupItems] of sellerGroups) {
-      const groupTotal = groupItems.reduce(
-        (sum, item) => sum + item.product.price_cents * item.quantity,
-        0
-      );
-
-      const { data: order, error: orderError } = await createOrder(
-        supabase,
-        {
-          buyer_id: user.id,
-          seller_id: sellerId,
-          delivery_address: address,
-          total_cents: groupTotal,
-        },
-        groupItems.map((item) => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-          unit_price_cents: item.product.price_cents,
+    // sem criar pedido nenhum. Disparadas em paralelo (em vez de uma de cada
+    // vez) já que são independentes entre si — só a decisão de desfazer
+    // depende de todas terem respondido.
+    const reservationResults = await Promise.all(
+      items.map((item) =>
+        adjustProductStock(supabase, item.product.id, -item.quantity).then((result) => ({
+          item,
+          result,
         }))
+      )
+    );
+
+    const firstFailure = reservationResults.find((r) => !r.result.ok);
+    const reserved = new Map(
+      reservationResults
+        .filter((r) => r.result.ok)
+        .map((r) => [r.item.product.id, r.item.quantity])
+    );
+
+    if (firstFailure) {
+      // Devolve só o que foi reservado com sucesso nesta tentativa — nenhum
+      // pedido foi criado ainda, então é seguro desfazer tudo em paralelo.
+      await Promise.all(
+        Array.from(reserved).map(([productId, quantity]) =>
+          adjustProductStock(supabase, productId, quantity)
+        )
       );
-
-      if (orderError || !order) {
-        // Devolve o estoque de tudo que ainda não virou pedido (incluindo
-        // este grupo que falhou) — pedidos já criados de outros vendedores
-        // continuam valendo, por isso já foram removidos de `reserved`.
-        for (const [productId, quantity] of reserved) {
-          await adjustProductStock(supabase, productId, quantity);
-        }
-        setError(orderError?.message ?? "Erro ao criar pedido.");
-        setLoading(false);
-        return;
-      }
-
-      for (const item of groupItems) reserved.delete(item.product.id);
-
-      createdOrderIds.push(order.id);
+      setError(`"${firstFailure.item.product.title}": ${firstFailure.result.error}`);
+      setLoading(false);
+      return;
     }
+
+    // Um pedido por vendedor, criados em paralelo — cada grupo é
+    // independente, então uma falha num não precisa esperar os outros.
+    const orderResults = await Promise.all(
+      Array.from(sellerGroups).map(async ([sellerId, groupItems]) => {
+        const groupTotal = groupItems.reduce(
+          (sum, item) => sum + item.product.price_cents * item.quantity,
+          0
+        );
+        const { data: order, error: orderError } = await createOrder(
+          supabase,
+          {
+            buyer_id: user.id,
+            seller_id: sellerId,
+            delivery_address: address,
+            total_cents: groupTotal,
+          },
+          groupItems.map((item) => ({
+            product_id: item.product.id,
+            quantity: item.quantity,
+            unit_price_cents: item.product.price_cents,
+          }))
+        );
+        return { groupItems, order, orderError };
+      })
+    );
+
+    const failedOrder = orderResults.find((r) => r.orderError || !r.order);
+    if (failedOrder) {
+      // Devolve o estoque só dos grupos que não viraram pedido — os que já
+      // foram criados com sucesso continuam valendo.
+      const toRollback = orderResults.filter((r) => r.orderError || !r.order);
+      await Promise.all(
+        toRollback.flatMap((r) =>
+          r.groupItems.map((item) => adjustProductStock(supabase, item.product.id, item.quantity))
+        )
+      );
+      setError(failedOrder.orderError?.message ?? "Erro ao criar pedido.");
+      setLoading(false);
+      return;
+    }
+
+    const createdOrderIds = orderResults.map((r) => r.order!.id);
 
     setLoading(false);
     clear();
