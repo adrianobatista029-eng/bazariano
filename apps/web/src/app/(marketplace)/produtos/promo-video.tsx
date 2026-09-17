@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 // Vídeo de propaganda ao lado do carrossel de banners, mesma proporção e
@@ -13,12 +13,22 @@ export function PromoVideo() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(1);
+  // O <video autoplay> só é criado depois que o JS já rodou no navegador —
+  // nunca vai no HTML que o servidor manda. Isso fecha de vez a brecha do
+  // áudio vazando: sem isso, o navegador lê "autoplay" sem "muted" ainda
+  // no HTML bruto (antes do React hidratar) e pode tentar tocar com som
+  // por uma fração de segundo. Client-only elimina essa janela na origem.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  // Autoplay no navegador exige mudo — define isso uma única vez no mount,
-  // via ref (nunca como prop do React, senão cada re-render reforçaria
-  // `muted` de novo e brigaria com o volume ajustado pelo usuário).
-  useEffect(() => {
-    if (videoRef.current) videoRef.current.muted = true;
+  // Reforça o mudo no próprio ref (redundante com o atributo `muted` abaixo,
+  // mas garante a propriedade mesmo se o atributo falhar por algum motivo).
+  // Precisa ser useCallback com deps vazias — uma função nova a cada render
+  // faz o React desconectar/reconectar o ref (e remutar o vídeo) a cada
+  // re-render, cancelando o botão de som.
+  const setVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el) el.muted = true;
   }, []);
 
   // Pausa o vídeo (e o áudio junto) assim que ele sai da tela, e ao
@@ -65,15 +75,22 @@ export function PromoVideo() {
     setMuted(next === 0);
   }
 
+  if (!mounted) {
+    return (
+      <div className="aspect-[12/5] w-full animate-pulse rounded-2xl border border-border bg-secondary shadow-lg sm:aspect-[5/2]" />
+    );
+  }
+
   return (
     <div className="relative w-full overflow-hidden rounded-2xl border border-border shadow-lg">
       <video
-        ref={videoRef}
+        ref={setVideoRef}
         className="aspect-[12/5] w-full object-cover sm:aspect-[5/2]"
         src="/video/propaganda-bazariano.mp4"
         preload="auto"
         autoPlay
         loop
+        muted
         playsInline
       />
 

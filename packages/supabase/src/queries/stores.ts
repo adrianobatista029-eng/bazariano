@@ -5,6 +5,19 @@ type Client = SupabaseClient<Database>;
 
 export const MAX_STORES_PER_OWNER = 15;
 
+// TODO: remover essa extensão manual e os `as any` abaixo depois de rodar
+// `supabase gen types` com a migration 0036_store_address.sql aplicada
+// (esses campos ainda não existem no database.types.ts).
+type StoreExtraFields = {
+  street?: string | null;
+  number?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+};
+
 export function listStoresByOwner(client: Client, ownerId: string) {
   return client
     .from("stores")
@@ -32,17 +45,17 @@ export function isSlugTaken(client: Client, slug: string) {
 
 export function createStore(
   client: Client,
-  store: Database["public"]["Tables"]["stores"]["Insert"]
+  store: Database["public"]["Tables"]["stores"]["Insert"] & StoreExtraFields
 ) {
-  return client.from("stores").insert(store).select().single();
+  return (client.from("stores") as any).insert(store).select().single();
 }
 
 export function updateStore(
   client: Client,
   storeId: string,
-  patch: Database["public"]["Tables"]["stores"]["Update"]
+  patch: Database["public"]["Tables"]["stores"]["Update"] & StoreExtraFields
 ) {
-  return client.from("stores").update(patch).eq("id", storeId).select().single();
+  return (client.from("stores") as any).update(patch).eq("id", storeId).select().single();
 }
 
 // Apaga a loja e, em cascata (FK), todos os produtos dela — se algum já

@@ -10,8 +10,14 @@ export default async function LojaPublicaPage({ params }: { params: { slug: stri
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: store } = await getStoreBySlug(supabase, params.slug);
-  if (!store) notFound();
+  const { data: storeData } = await getStoreBySlug(supabase, params.slug);
+  if (!storeData) notFound();
+  // TODO: tirar esse cast quando database.types.ts for regenerado com a
+  // migration 0036_store_address.sql aplicada.
+  const store = storeData as typeof storeData & {
+    city: string | null;
+    state: string | null;
+  };
 
   const isOwner = user?.id === store.owner_id;
 
@@ -48,7 +54,13 @@ export default async function LojaPublicaPage({ params }: { params: { slug: stri
         )}
         <div>
           <h1 className="text-xl font-semibold text-foreground">{store.name}</h1>
-          {store.description && <p className="text-sm text-muted-foreground">{store.description}</p>}
+          {/* Só cidade/UF na bio pública — endereço completo é privado. */}
+          {store.city && (
+            <p className="text-sm text-muted-foreground">
+              📍 {store.city}
+              {store.state ? `/${store.state}` : ""}
+            </p>
+          )}
         </div>
       </div>
 
