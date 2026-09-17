@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImagePlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageToDataUrl } from "@/lib/image-resize";
 import { createStore, updateStore } from "@marketplace/supabase/queries";
@@ -140,16 +141,24 @@ export function StoreForm({
       <div className="flex gap-6">
         <div>
           <label className="mb-1 block text-sm font-medium text-foreground">Logo</label>
-          {logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="" className="mb-2 h-16 w-16 rounded-full object-cover" />
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
-            className="text-sm text-muted-foreground"
-          />
+          <label
+            htmlFor="logo-upload"
+            className="group relative flex h-16 w-16 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-border bg-secondary hover:border-primary"
+          >
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <ImagePlus className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+            )}
+            <input
+              id="logo-upload"
+              type="file"
+              accept="image/*"
+              onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
+              className="hidden"
+            />
+          </label>
         </div>
 
         <div>
@@ -165,16 +174,24 @@ export function StoreForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium text-foreground">Banner</label>
-        {bannerUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={bannerUrl} alt="" className="mb-2 h-24 w-full rounded-lg object-cover" />
-        )}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => e.target.files?.[0] && handleUploadBanner(e.target.files[0])}
-          className="text-sm text-muted-foreground"
-        />
+        <label
+          htmlFor="banner-upload"
+          className="group relative flex h-24 w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-secondary hover:border-primary"
+        >
+          {bannerUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={bannerUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <ImagePlus className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+          )}
+          <input
+            id="banner-upload"
+            type="file"
+            accept="image/*"
+            onChange={(e) => e.target.files?.[0] && handleUploadBanner(e.target.files[0])}
+            className="hidden"
+          />
+        </label>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

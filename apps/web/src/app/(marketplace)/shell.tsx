@@ -198,8 +198,7 @@ export function MarketplaceShell({
       <header className="sticky top-0 z-30 hidden border-b border-border bg-card/60 backdrop-blur-md md:block">
         <div className="flex items-center gap-6 px-6 py-3">
           <Link href="/produtos" className="flex shrink-0 items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-8 w-auto" />
+            <span className="wordmark-css text-5xl leading-none">Bazariano</span>
           </Link>
           {searchForm}
           <div className="ml-auto flex shrink-0 items-center gap-3">{topActions}</div>
@@ -244,8 +243,7 @@ export function MarketplaceShell({
           {pathname === "/produtos" && (
             <>
               <Link href="/produtos" className="order-1 flex shrink-0 items-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/bazariano-wordmark.png" alt="Bazariano" className="wordmark-crisp h-5 w-auto" />
+                <span className="wordmark-css text-3xl leading-none">Bazariano</span>
               </Link>
 
               <div className="order-2 ml-auto flex items-center gap-3">
